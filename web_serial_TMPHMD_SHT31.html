@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TMP/HMD SENSOR SHT31</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>温度/湿度センサ SHT31 テストツール </span></h1>
+	<h2><span id="msg_string" >取得ボタンを押すと温度/湿度が表示されます</span></h2>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="init-button" type="button" disabled>初期化</button>
+	<button id="get-button" type="button" disabled>取得</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	TMP/HMD SENSOR SHT31 Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const initButton = document.getElementById ('init-button');
+	const getButton = document.getElementById ('get-button');
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = Array(6);
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		initButton.disabled = false;
+		getButton.disabled = false;
+		
+        //Set Init
+		initButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+            const bytes1 = new Uint8Array([0x53, 0x88, 0x02, 0x30, 0xA2, 0x50]);
+			const bytes2 = new Uint8Array([0x53, 0x88, 0x02, 0x30, 0x41, 0x50]);
+			const bytes3 = new Uint8Array([0x53, 0x88, 0x02, 0x30, 0x66, 0x50]);
+            const writer = port.writable.getWriter();
+			dataIndex=0;
+            writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+			Sleep(30);
+			writer.write(bytes3);
+            writer.releaseLock();			
+          }
+        });
+		
+		//Get TEMP & HUMD
+		getButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {
+		  
+            const bytes1 = new Uint8Array([0x53, 0x88, 0x02, 0x24, 0x00, 0x50]);
+			const bytes2 = new Uint8Array([0x53, 0x89, 0x06, 0x50]);
+            const writer = port.writable.getWriter();
+			dataIndex=0;
+            writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+            writer.releaseLock();
+          }
+        });
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{
+						
+						//console.log(value);
+						//console.log(dataIndex);
+						
+						dataArry[dataIndex] = value;
+
+						if(dataIndex==5)
+						{
+								var res={temp:0,humd:0};
+								var t=-45.0+((dataArry[0]*256.0+dataArry[1]*1.0)*175.0/65535.0);
+								var h=100.0*(dataArry[3]*256+dataArry[4]*1.0)/65535.0;
+								res.temp=Math.round(10*t)/10;
+								res.humd=Math.round(10*h)/10;
+								var str=" " + res.temp + " ℃ " + res.humd + " ％";
+								console.log(str);
+								document.getElementById("msg_string").innerText = str;
+								dataIndex=0;
+						}
+						else
+						{
+							dataIndex = dataIndex+1;
+						}
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				initButton.disabled = true;
+				getButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+
+
+	</script>
+  </body>
+</html>
