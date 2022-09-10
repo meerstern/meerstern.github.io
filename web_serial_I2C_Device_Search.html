@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>I2C Device Search</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:12pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>I2Cデバイスサーチツール </span></h1>
+	<h2><span id="msg_string" >取得ボタンを押すと検索結果が表示されます</span></h2>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="init-button" type="button" disabled>初期化</button>
+	<button id="search-button" type="button" disabled>検索</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	I2C Device Search Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const initButton = document.getElementById ('init-button');
+	const getButton = document.getElementById ('search-button');
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let loop = 0;
+	let results = "";
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		getButton.disabled = false;
+		initButton.disabled = false;
+		
+		//Set Bus Timeout
+		initButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+            const bytes = new Uint8Array([0x57, 0x09, 0x67, 0x50]);
+            const writer = port.writable.getWriter();
+            writer.write(bytes);
+            writer.releaseLock();
+			//console.log(bytes);			
+          }
+        });
+		
+	
+		//Search Button
+		getButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {
+			getButton.disabled = true;
+			initButton.disabled = true;
+			document.getElementById("msg_string").innerText = "No Device Found";
+			const writer = port.writable.getWriter();			
+			console.log("Start Search");	
+			dataIndex=0;
+			results="";
+			for(loop=2;loop<255;loop=loop+2)
+			{
+				const bytes = new Uint8Array([0x53, loop, 0x01, 0x00, 0x53, loop+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
+				writer.write(bytes);
+				//console.log("Loop: "+ loop + " DATA:"+ bytes);
+				Sleep(30);
+			}
+			console.log("End Search");
+			getButton.disabled = false;	
+			initButton.disabled = false;			
+            writer.releaseLock();
+          }
+        });
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{
+						//console.log(dataIndex+" "+value);
+						if(value==0xF0)
+						{							
+							//console.log(value);
+							var addr=dataIndex>>1;
+							var raddr=dataIndex+1;
+							var waddr=dataIndex;
+							var str = "Found Device!! 7bit Addr: 0x" + addr.toString(16) 									
+									+ ",  Write 8bit Addr: 0x" +waddr.toString(16)
+									+ ",  Read 8bit Addr: 0x" +raddr.toString(16)+"\n";
+							console.log(str);
+							results = results + str;
+							document.getElementById("msg_string").innerText = results;
+							dataIndex=dataIndex+2;
+						}
+						else
+						{
+							dataIndex=dataIndex+2;
+						}
+						
+					}
+					
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				getButton.disabled = true;
+				initButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+
+
+	</script>
+  </body>
+</html>
