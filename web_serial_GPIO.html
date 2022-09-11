@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GPIO Test Tool</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			fieldset { font-size:12pt; line-height:0.1em; padding:  20px;}
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>GPIOテストツール </span></h1>
+	<h2><span id="msg_string" >USBシリアルI2C変換基板のGPIOの制御が可能です</span></h2>
+	
+	<fieldset>    
+	<legend>GPIO入出力設定</legend>	
+	<div>
+	  <p>GPIO0</p>　　
+      <input type="radio" id="input0" name="gpio0" value="input0" checked onchange="Gpio0Change();">
+      <label for="input0">入力</label>
+      <input type="radio" id="output0" name="gpio0" value="output0" onchange="Gpio0Change();">
+      <label for="output0">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO1</p>　　
+      <input type="radio" id="input1" name="gpio1" value="input1" checked onchange="Gpio1Change();">
+      <label for="input1">入力</label>
+      <input type="radio" id="output1" name="gpio1" value="output1" onchange="Gpio1Change();">
+      <label for="output1">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO2</p>　　
+      <input type="radio" id="input2" name="gpio2" value="input2" checked onchange="Gpio2Change();">
+      <label for="input2">入力</label>
+      <input type="radio" id="output2" name="gpio2" value="output2" onchange="Gpio2Change();">
+      <label for="output2">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO3</p>　　
+      <input type="radio" id="input3" name="gpio3" value="input3" checked onchange="Gpio3Change();">
+      <label for="input3">入力</label>
+      <input type="radio" id="output3" name="gpio3" value="output3" onchange="Gpio3Change();">
+      <label for="output3">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO4</p>　　
+      <input type="radio" id="input4" name="gpio4" value="input4" checked onchange="Gpio4Change();">
+      <label for="input4">入力</label>
+      <input type="radio" id="output4" name="gpio4" value="output4" onchange="Gpio4Change();">
+      <label for="output4">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO5</p>　　
+      <input type="radio" id="input5" name="gpio5" value="input5" checked onchange="Gpio5Change();">
+      <label for="input5">入力</label>
+      <input type="radio" id="output5" name="gpio5" value="output5" onchange="Gpio5Change();">
+      <label for="output5">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO6</p>　　
+      <input type="radio" id="input6" name="gpio6" value="input6" checked onchange="Gpio6Change();">
+      <label for="input6">入力</label>
+      <input type="radio" id="output6" name="gpio6" value="output6" onchange="Gpio6Change();">
+      <label for="output6">出力</label>
+	</div>	
+	<div>
+	　　<p>GPIO7</p>　　
+      <input type="radio" id="input7" name="gpio7" value="input7" checked onchange="Gpio7Change();">
+      <label for="input7">入力</label>
+      <input type="radio" id="output7" name="gpio7" value="output7" onchange="Gpio7Change();">
+      <label for="output7">出力</label>
+	</div>	
+	</fieldset>
+	
+	<br/>
+	<fieldset>    
+	<legend>GPIO ON/OFF</legend>	
+	<div>
+	  <p>GPIO0</p>　　
+      <input type="radio" id="off0" name="sw0" value="off0" checked disabled>
+      <label for="off0">OFF</label>
+      <input type="radio" id="on0" name="sw0" value="on0" disabled>
+      <label for="on0">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO1</p>　　
+      <input type="radio" id="off1" name="sw1" value="off1" checked disabled>
+      <label for="off1">OFF</label>
+      <input type="radio" id="on1" name="sw1" value="on1" disabled>
+      <label for="on1">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO2</p>　　
+      <input type="radio" id="off2" name="sw2" value="off2" checked disabled>
+      <label for="off2">OFF</label>
+      <input type="radio" id="on2" name="sw2" value="on2" disabled>
+      <label for="on2">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO3</p>　　
+      <input type="radio" id="off3" name="sw3" value="off3" checked disabled>
+      <label for="off3">OFF</label>
+      <input type="radio" id="on3" name="sw3" value="on3" disabled>
+      <label for="on3">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO4</p>　　
+      <input type="radio" id="off4" name="sw4" value="off4" checked disabled>
+      <label for="off4">OFF</label>
+      <input type="radio" id="on4" name="sw4" value="on4" disabled>
+      <label for="on4">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO5</p>　　
+      <input type="radio" id="off5" name="sw5" value="off5" checked disabled>
+      <label for="off5">OFF</label>
+      <input type="radio" id="on5" name="sw5" value="on5" disabled>
+      <label for="on5">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO6</p>　　
+      <input type="radio" id="off6" name="sw6" value="off6" checked disabled>
+      <label for="off6">OFF</label>
+      <input type="radio" id="on6" name="sw6" value="on6" disabled>
+      <label for="on6">ON</label>
+	</div>	
+	<div>
+	　　<p>GPIO7</p>　　
+      <input type="radio" id="off7" name="sw7" value="off7" checked disabled>
+      <label for="off7">OFF</label>
+      <input type="radio" id="on7" name="sw7" value="on7" disabled>
+      <label for="on7">ON</label>
+	</div>	
+	</fieldset>
+	<br/>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="io-button" type="button" disabled>入出力設定</button>
+	<button id="state-button" type="button" disabled>ON/OFF設定</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでIOテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	GPIO Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const initButton = document.getElementById ('io-button');
+	const getButton = document.getElementById ('state-button');
+	
+	const input0 = document.getElementById("input0");
+	const input1 = document.getElementById("input1");
+	const input2 = document.getElementById("input2");
+	const input3 = document.getElementById("input3");
+	const input4 = document.getElementById("input4");
+	const input5 = document.getElementById("input5");
+	const input6 = document.getElementById("input6");
+	const input7 = document.getElementById("input7");
+	
+	const off0 = document.getElementById("off0");
+	const off1 = document.getElementById("off1");
+	const off2 = document.getElementById("off2");
+	const off3 = document.getElementById("off3");
+	const off4 = document.getElementById("off4");
+	const off5 = document.getElementById("off5");
+	const off6 = document.getElementById("off6");
+	const off7 = document.getElementById("off7");
+	
+	const on0 = document.getElementById("on0");
+	const on1 = document.getElementById("on1");
+	const on2 = document.getElementById("on2");
+	const on3 = document.getElementById("on3");
+	const on4 = document.getElementById("on4");
+	const on5 = document.getElementById("on5");
+	const on6 = document.getElementById("on6");
+	const on7 = document.getElementById("on7");
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = Array(6);
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	//Button0 Changed Event
+	function Gpio0Change()
+	{
+		if(input0.checked==true)
+		{
+			off0.disabled=true;
+			on0.disabled=true;			
+		}
+		else
+		{			
+			off0.disabled=false;
+			on0.disabled=false;		
+		}
+    }
+	
+	//Button1 Changed Event
+	function Gpio1Change()
+	{
+		if(input1.checked==true)
+		{
+			off1.disabled=true;
+			on1.disabled=true;			
+		}
+		else
+		{			
+			off1.disabled=false;
+			on1.disabled=false;		
+		}
+    }
+	
+	//Button2 Changed Event
+	function Gpio2Change()
+	{
+		if(input2.checked==true)
+		{
+			off2.disabled=true;
+			on2.disabled=true;			
+		}
+		else
+		{			
+			off2.disabled=false;
+			on2.disabled=false;		
+		}
+    }
+		
+	//Button3 Changed Event
+	function Gpio3Change()
+	{
+		if(input3.checked==true)
+		{
+			off3.disabled=true;
+			on3.disabled=true;			
+		}
+		else
+		{			
+			off3.disabled=false;
+			on3.disabled=false;		
+		}
+    }
+	
+	//Button4 Changed Event
+	function Gpio4Change()
+	{
+		if(input4.checked==true)
+		{
+			off4.disabled=true;
+			on4.disabled=true;			
+		}
+		else
+		{			
+			off4.disabled=false;
+			on4.disabled=false;		
+		}
+    }
+	
+	//Button5 Changed Event
+	function Gpio5Change()
+	{
+		if(input5.checked==true)
+		{
+			off5.disabled=true;
+			on5.disabled=true;			
+		}
+		else
+		{			
+			off5.disabled=false;
+			on5.disabled=false;		
+		}
+    }
+	
+	//Button6 Changed Event
+	function Gpio6Change()
+	{
+		if(input6.checked==true)
+		{
+			off6.disabled=true;
+			on6.disabled=true;			
+		}
+		else
+		{			
+			off6.disabled=false;
+			on6.disabled=false;		
+		}
+    }
+	
+	//Button7 Changed Event
+	function Gpio7Change()
+	{
+		if(input7.checked==true)
+		{
+			off7.disabled=true;
+			on7.disabled=true;			
+		}
+		else
+		{			
+			off7.disabled=false;
+			on7.disabled=false;		
+		}
+    }
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		initButton.disabled = false;
+		getButton.disabled = false;
+		
+        //Set GPIO Direction
+		initButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {	
+			var gpio0=0b00;
+			var gpio1=0b00;
+			var gpio2=0b00;
+			var gpio3=0b00;
+			var gpio4=0b00;
+			var gpio5=0b00;
+			var gpio6=0b00;
+			var gpio7=0b00;
+			
+			if(input0.checked==true)
+				gpio0=0b01;//Input
+			else
+				gpio0=0b10;//Output
+			
+			if(input1.checked==true)
+				gpio1=0b01;//Input
+			else
+				gpio1=0b10;//Output
+				
+			if(input2.checked==true)
+				gpio2=0b01;//Input
+			else
+				gpio2=0b10;//Output
+				
+			if(input3.checked==true)
+				gpio3=0b01;//Input
+			else
+				gpio3=0b10;//Output
+				
+			if(input4.checked==true)
+				gpio4=0b01;//Input
+			else
+				gpio4=0b10;//Output
+
+			if(input5.checked==true)
+				gpio5=0b01;//Input
+			else
+				gpio5=0b10;//Output
+				
+			if(input6.checked==true)
+				gpio6=0b01;//Input
+			else
+				gpio6=0b10;//Output
+				
+			if(input7.checked==true)
+				gpio7=0b01;//Input
+			else
+				gpio7=0b10;//Output
+			
+			var gpioPortConf1 = gpio0 + (gpio1<<2) + (gpio2<<4) + (gpio3<<6);
+			var gpioPortConf2 = gpio4 + (gpio5<<2) + (gpio6<<4) + (gpio7<<6);
+			var state=0x00;//Output All Off		  
+            const bytes = new Uint8Array([0x57, 0x02, gpioPortConf1, 0x03, gpioPortConf2, 0x04, state, 0x50]);
+            const writer = port.writable.getWriter();
+            writer.write(bytes);
+			//console.log(bytes);
+            writer.releaseLock();			
+          }
+        });
+		
+		//Set and Get GPUO State
+		getButton.addEventListener('click', (event) =>
+		{
+          var io_state=0;
+		  
+		  if (port && port.writable)
+		  {
+			if(off0.checked==true)
+				io_state = io_state & ~(1 << 0);
+			else
+				io_state = io_state | (1 << 0);
+			
+			if(off1.checked==true)
+				io_state = io_state & ~(1 << 1);
+			else
+				io_state = io_state | (1 << 1);			
+			
+			if(off2.checked==true)
+				io_state = io_state & ~(1 << 2);
+			else
+				io_state = io_state | (1 << 2);
+				
+			if(off3.checked==true)
+				io_state = io_state & ~(1 << 3);
+			else
+				io_state = io_state | (1 << 3);
+				
+			if(off4.checked==true)
+				io_state = io_state & ~(1 << 4);
+			else
+				io_state = io_state | (1 << 4);
+				
+			if(off5.checked==true)
+				io_state = io_state & ~(1 << 5);
+			else
+				io_state = io_state | (1 << 5);
+			
+			if(off6.checked==true)
+				io_state = io_state & ~(1 << 6);
+			else
+				io_state = io_state | (1 << 6);
+				
+			if(off7.checked==true)
+				io_state = io_state & ~(1 << 7);
+			else
+				io_state = io_state | (1 << 7);
+		  
+            const bytes = new Uint8Array([0x4F, io_state, 0x50, 0x49, 0x50]);
+            const writer = port.writable.getWriter();
+            writer.write(bytes);
+			//console.log(bytes);
+            writer.releaseLock();
+          }
+        });
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{
+						if((value>>0)&0x01)
+							on0.checked=true;
+						else 						 
+							off0.checked=true;
+						
+						if((value>>1)&0x01)
+							on1.checked=true;
+						else 						 
+							off1.checked=true;
+							
+						if((value>>2)&0x01)
+							on2.checked=true;
+						else 						 
+							off2.checked=true;
+							
+						if((value>>3)&0x01)
+							on3.checked=true;
+						else 						 
+							off3.checked=true;
+							
+						if((value>>4)&0x01)
+							on4.checked=true;
+						else 						 
+							off4.checked=true;
+							
+						if((value>>5)&0x01)
+							on5.checked=true;
+						else 						 
+							off5.checked=true;
+							
+						if((value>>6)&0x01)
+							on6.checked=true;
+						else 						 
+							off6.checked=true;
+							
+						if((value>>7)&0x01)
+							on7.checked=true;
+						else 						 
+							off7.checked=true;
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				initButton.disabled = true;
+				getButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+
+
+	</script>
+  </body>
+</html>
