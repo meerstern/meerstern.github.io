@@ -6,5 +6,6 @@
   * ブラウザはEdgeもしくはChromeのみ対応しています  
     
  Released under the MIT license
+ 
  [1]: https://meerstern.github.io 
  [2]: https://www.switch-science.com/catalog/6214/
