@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TMP/HMD SENSOR SHT31 with Graph</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>温度/湿度センサ SHT31 グラフツール </span></h1>
+	<style>
+	#tmp_chart {max-width:800px;max-height:300px;}
+	#hmd_chart {max-width:800px;max-height:300px;}
+	</style>
+	<canvas id="tmp_chart"></canvas>
+	<br/>	
+	<canvas id="hmd_chart"></canvas>
+	<br/>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<input id="start-button" type="button" value="開始">
+	<button id="save-button" type="button">保存</button>
+	<button id="clear-button" type="button">クリア</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	TMP/HMD SENSOR SHT31 with Graph Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const startButton = document.getElementById ('start-button');
+	const saveButton = document.getElementById ('save-button');
+	const clearButton = document.getElementById ('clear-button');
+	let tChart = document.getElementById('tmp_chart');
+	let hChart = document.getElementById('hmd_chart');
+	
+	let tdata = {
+		labels: [],
+			datasets: [{
+				label: '温度',
+				data: [],
+				borderColor: 'rgba(100, 100, 255, 1)'
+			}]
+	};
+	
+	let hdata = {
+		labels: [],
+			datasets: [{
+				label: '湿度',
+				data: [],
+				borderColor: 'rgba(100, 100, 255, 1)'
+			}]
+	};
+	
+	let toptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: '温度℃'}}
+		},
+		plugins:{legend:{display: false}}
+	};
+	
+	let hoptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: '湿度％'}}
+		},
+		plugins:{legend:{display: false}}
+	};
+	
+	let tmpChart = new Chart(tChart, {
+		type: 'line',
+		data: tdata,
+		options: toptions
+	});
+	
+	let hmdChart = new Chart(hChart, {
+		type: 'line',
+		data: hdata,
+		options: hoptions
+	});
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = Array(6);
+	let chartIndex=0;
+	let IsRunning = false;
+	let IsDataReady = false;
+	let nowTmp = 0.0;
+	let nowHmd = 0.0;
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	//Graph Clear
+	clearButton.addEventListener('click', (event) =>
+	{
+		chartIndex=0;
+		tdata.labels=[];
+		tdata.datasets[0].data=[];	
+		hdata.labels=[];
+		hdata.datasets[0].data=[];	
+		tmpChart.update();
+		hmdChart.update();
+	});
+	
+	//Save Data
+	saveButton.addEventListener('click', (event) =>
+	{
+		var strCsv = "time,temp,humd,\n";
+		
+		for(var i=0; i<chartIndex; i++)
+		{
+			strCsv = strCsv + tmpChart.data.labels[i] + ","
+							+ tmpChart.data.datasets[0].data[i] + ","
+							+ hmdChart.data.datasets[0].data[i] + ",\n";							
+		}
+
+		var doc = document.createElement("a");
+		doc.href = 'data:text/csv,' + encodeURIComponent(strCsv);
+		doc.download = "SHT31.csv";
+		doc.click();
+	});
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        //Set Init
+		if (port && port.writable)
+		{		  
+			const bytes1 = new Uint8Array([0x53, 0x88, 0x02, 0x30, 0xA2, 0x50]);
+			const bytes2 = new Uint8Array([0x53, 0x88, 0x02, 0x30, 0x41, 0x50]);
+			const bytes3 = new Uint8Array([0x53, 0x88, 0x02, 0x30, 0x66, 0x50]);
+			const writer = port.writable.getWriter();
+			dataIndex=0;
+			writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+			Sleep(30);
+			writer.write(bytes3);
+			writer.releaseLock();			
+		}
+		
+		connectButton.innerText = '切断';	
+		startButton.disabled = false;
+
+		
+		//Start Stop Control
+		startButton.addEventListener('click', (event) =>
+		{
+			IsRunning=IsRunning?false:true;
+			startButton.value=IsRunning?"停止":"開始";
+		});
+		
+		
+		//Interval Timer 2000msec=2sec
+		setInterval(function()
+		{	
+			//console.log("Interval");
+			if(IsDataReady==false)
+				getTmpHmdData();
+			if(IsRunning && IsDataReady)
+			{
+				const dt = new Date();
+				const d = new Intl.DateTimeFormat("ja-jp", {
+				  hour: "2-digit",
+				  minute: "2-digit",
+				  second: "2-digit",
+				}).format(dt);
+				tmpChart.data.datasets[0].data[chartIndex] = nowTmp;
+				hmdChart.data.datasets[0].data[chartIndex] = nowHmd;
+				tmpChart.data.labels[chartIndex] = d;
+				hmdChart.data.labels[chartIndex] = d;
+				tmpChart.update();
+				hmdChart.update();
+				chartIndex=chartIndex+1;
+				IsDataReady=false;
+			}
+		},2000);
+		
+				
+		//Get TEMP & HUMD
+		function getTmpHmdData()
+		{
+          if (port && port.writable)
+		  {		  
+            const bytes1 = new Uint8Array([0x53, 0x88, 0x02, 0x24, 0x00, 0x50]);
+			const bytes2 = new Uint8Array([0x53, 0x89, 0x06, 0x50]);
+            const writer = port.writable.getWriter();
+			dataIndex=0;
+            writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+            writer.releaseLock();
+			//console.log("Send");
+          }
+        }
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{						
+						//console.log(value);
+						//console.log(dataIndex);						
+						dataArry[dataIndex] = value;
+
+						if(dataIndex==5)
+						{								
+							var t = -45.0+((dataArry[0]*256.0+dataArry[1]*1.0)*175.0/65535.0);
+							var h = 100.0*(dataArry[3]*256+dataArry[4]*1.0)/65535.0;
+							nowTmp = Math.round(10*t)/10;
+							nowHmd = Math.round(10*h)/10;
+							var str=" " + nowTmp + " ℃ " + nowHmd + " ％";
+							console.log(str);					
+							dataIndex=0;
+							IsDataReady=true;
+						}
+						else
+						{
+							dataIndex = dataIndex+1;
+						}
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				startButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+	</script>
+  </body>
+</html>
