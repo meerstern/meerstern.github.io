@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TMP/HMD/BAR SENSOR BME280 with Graph</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>温度/湿度/気圧センサ BME280グラフツール </span></h1>
+	<style>
+	#tmp_chart {max-width:800px;max-height:300px;}
+	#hmd_chart {max-width:800px;max-height:300px;}
+	#bar_chart {max-width:800px;max-height:300px;}
+	</style>
+	<canvas id="tmp_chart"></canvas>
+	<br/>	
+	<canvas id="hmd_chart"></canvas>
+	<br/>
+	<canvas id="bar_chart"></canvas>
+	<br/>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="init-button" type="button" disabled>初期化</button>
+	<input id="start-button" type="button" value="開始" disabled>
+	<button id="save-button" type="button">保存</button>
+	<button id="clear-button" type="button">クリア</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	TMP/HMD/BAR SENSOR BME280 with Graph Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	
+	const connectButton = document.getElementById ('connect-button');
+	const initButton = document.getElementById ('init-button');
+	const startButton = document.getElementById ('start-button');
+	const saveButton = document.getElementById ('save-button');
+	const clearButton = document.getElementById ('clear-button');
+	let tChart = document.getElementById('tmp_chart');
+	let hChart = document.getElementById('hmd_chart');
+	let bChart = document.getElementById('bar_chart');
+	
+	
+	let tdata = {
+		labels: [],
+		datasets: [{label: '温度',data: [],
+		borderColor: 'rgba(255, 100, 100, 1)'}]
+	};
+	
+	let hdata = {
+		labels: [],
+		datasets: [{label: '湿度',data: [],
+		borderColor: 'rgba(100, 255, 100, 1)'}]
+	};
+	
+	let bdata = {
+		labels: [],
+		datasets: [{label: '気圧',data: [],
+		borderColor: 'rgba(100, 100, 255, 1)'}]
+	};
+	
+	let toptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: '温度℃'}}
+		},
+		plugins:{legend:{display: false}}
+	};
+	
+	let hoptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: '湿度％'}}
+		},
+		plugins:{legend:{display: false}}
+	};
+	
+	let boptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: '気圧hPa'}}
+		},
+		plugins:{legend:{display: false}}
+	};
+	
+		
+	let tmpChart = new Chart(tChart, {
+		type: 'line',
+		data: tdata,
+		options: toptions
+	});
+	
+	let hmdChart = new Chart(hChart, {
+		type: 'line',
+		data: hdata,
+		options: hoptions
+	});
+	
+	let barChart = new Chart(bChart, {
+		type: 'line',
+		data: bdata,
+		options: boptions
+	});
+	
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = Array(8);
+	let chartIndex=0;
+	let Ttrim = Array(32);
+	let trimMode = false;
+	let readMode = false; 
+	let IsRunning = false;
+	let IsDataReady = false;
+	let nowTmp = 0.0;
+	let nowHmd = 0.0;
+	let nowBar = 0.0;
+
+	let tempFine = 0.0;
+	
+	var reg =
+        {   T1:0.0,T2:0.0,T3:0.0,
+            P1:0.0,P2:0.0,P3:0.0,P4:0.0,P5:0.0,P6:0.0,P7:0.0,P8:0.0,P9:0.0,
+            H1:0.0,H2:0.0,H3:0.0,H4:0.0,H5:0.0,H6:0.0};
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+		
+	//Graph Clear
+	clearButton.addEventListener('click', (event) =>
+	{
+		chartIndex=0;
+		tdata.labels=[];
+		tdata.datasets[0].data=[];	
+		hdata.labels=[];
+		hdata.datasets[0].data=[];	
+		bdata.labels=[];
+		bdata.datasets[0].data=[];	
+		tmpChart.update();
+		hmdChart.update();
+		barChart.update();
+	});
+	
+	//Save Data
+	saveButton.addEventListener('click', (event) =>
+	{
+		var strCsv = "time,temp,humd,bar,\n";
+		
+		for(var i=0; i<chartIndex; i++)
+		{
+			strCsv = strCsv + tmpChart.data.labels[i] + ","
+							+ tmpChart.data.datasets[0].data[i] + ","
+							+ hmdChart.data.datasets[0].data[i] + ","							
+							+ barChart.data.datasets[0].data[i] + ",\n";							
+		}
+
+		var doc = document.createElement("a");
+		doc.href = 'data:text/csv,' + encodeURIComponent(strCsv);
+		doc.download = "BME280.csv";
+		doc.click();
+	});
+		
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		initButton.disabled = false;
+		
+        //Set Init
+		initButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+            var os_h = 0x01;//Humidity oversampling x 1
+			var os_t = 0x01;//Temperature oversampling x 1
+			var os_p = 0x01;//Pressure oversampling x 1
+			var mode = 0x03;//Normal mode
+			var c_reg = (os_t << 5) | (os_p << 2) | mode;
+			
+			var tim_sb = 0x05; //Tstandby 1000ms
+			var filt = 0x00;   //Filter off
+			var spidis = 0x00; //3-wire SPI Disable
+			var f_reg    = (tim_sb << 5) | (filt << 2) | spidis;			
+			
+			const bytes1 = new Uint8Array([0x53, 0xEE, 0x02, 0xF2, os_h, 0x50]);//Control Humd
+			const bytes2 = new Uint8Array([0x53, 0xEE, 0x02, 0xF4, c_reg, 0x50]);//Control Temp & Press
+			const bytes3 = new Uint8Array([0x53, 0xEE, 0x02, 0xF5, f_reg, 0x50]);//Other Setting
+			const bytes4 = new Uint8Array([0x53, 0xEE, 0x01, 0x88, 0x53, 0xEE+1, 0x18,0x50]);//Get T TRIM
+			const bytes5 = new Uint8Array([0x53, 0xEE, 0x01, 0xA1, 0x53, 0xEE+1, 0x01,0x50]);//Get H TRIM
+			const bytes6 = new Uint8Array([0x53, 0xEE, 0x01, 0xE1, 0x53, 0xEE+1, 0x07,0x50]);//Get HH TRIM
+            const writer = port.writable.getWriter();
+			
+			dataIndex=0;
+			readMode = false;
+			trimMode = true;
+			
+            writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+			Sleep(30);
+			writer.write(bytes3);
+			Sleep(30);
+			writer.write(bytes4);	
+			Sleep(100);
+			writer.write(bytes5);	
+			Sleep(100);
+			writer.write(bytes6);				
+            writer.releaseLock();
+			startButton.disabled = false;			
+          }
+        });
+		
+		//Start Stop Control
+		startButton.addEventListener('click', (event) =>
+		{
+			IsRunning=IsRunning?false:true;
+			startButton.value=IsRunning?"停止":"開始";
+		});
+		
+		//Interval Timer 2000msec=2sec
+		setInterval(function()
+		{	
+			//console.log("Interval");
+			if(IsDataReady==false)
+				getTmpHmdBarData();
+			if(IsRunning && IsDataReady)
+			{
+				const dt = new Date();
+				const d = new Intl.DateTimeFormat("ja-jp", {
+				  hour: "2-digit",
+				  minute: "2-digit",
+				  second: "2-digit",
+				}).format(dt);
+				tmpChart.data.datasets[0].data[chartIndex] = nowTmp;
+				hmdChart.data.datasets[0].data[chartIndex] = nowHmd;
+				barChart.data.datasets[0].data[chartIndex] = nowBar;
+				tmpChart.data.labels[chartIndex] = d;
+				hmdChart.data.labels[chartIndex] = d;
+				barChart.data.labels[chartIndex] = d;
+				tmpChart.update();
+				hmdChart.update();
+				barChart.update();
+				chartIndex=chartIndex+1;
+				IsDataReady=false;
+			}
+		},2000);
+		
+		
+		//Get TEMP & HUMD & Bar
+		function getTmpHmdBarData()
+		{
+          if (port && port.writable)
+		  {
+		  
+            const bytes1 = new Uint8Array([0x53, 0xEE, 0x01, 0xFA, 0x53, 0xEE+1, 0x03, 0x50]);//Temp Read
+			const bytes2 = new Uint8Array([0x53, 0xEE, 0x01, 0xFD, 0x53, 0xEE+1, 0x02, 0x50]);//Humd Read
+			const bytes3 = new Uint8Array([0x53, 0xEE, 0x01, 0xF7, 0x53, 0xEE+1, 0x03, 0x50]);//Press Read
+            const writer = port.writable.getWriter();
+			dataIndex = 0;
+			trimMode = false;
+			readMode = true;
+            writer.write(bytes1);
+			Sleep(50);
+			writer.write(bytes2);
+			Sleep(50);
+			writer.write(bytes3);			
+            writer.releaseLock();
+			//console.log(bytes3);	
+          }
+        }
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{
+						
+						//console.log(value);
+						//console.log(dataIndex);
+						
+						if(trimMode==true)
+						{
+							Ttrim[dataIndex]=value;
+							if(dataIndex==23)
+							{
+								reg.T1 = ((1.0*Ttrim[1])<<8)+(1.0*Ttrim[0]);
+								reg.T2 = ((1.0*Ttrim[3]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[3])<<8)+(1.0*Ttrim[2])):(((1.0*Ttrim[3])<<8)+(1.0*Ttrim[2]));
+								reg.T3 = ((1.0*Ttrim[5]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[5])<<8)+(1.0*Ttrim[4])):(((1.0*Ttrim[5])<<8)+(1.0*Ttrim[4]));
+								reg.P1 = ((1.0*Ttrim[7])<<8) +(1.0*Ttrim[6]);
+								reg.P2 = ((1.0*Ttrim[9]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[9])<<8)+(1.0*Ttrim[8])):(((1.0*Ttrim[9])<<8)+(1.0*Ttrim[8]));
+								reg.P3 = ((1.0*Ttrim[11]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[11])<<8)+(1.0*Ttrim[10])):(((1.0*Ttrim[11])<<8)+(1.0*Ttrim[10]));
+								reg.P4 = ((1.0*Ttrim[13]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[13])<<8)+(1.0*Ttrim[12])):(((1.0*Ttrim[13])<<8)+(1.0*Ttrim[12]));
+								reg.P5 = ((1.0*Ttrim[15]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[15])<<8)+(1.0*Ttrim[14])):(((1.0*Ttrim[15])<<8)+(1.0*Ttrim[14]));
+								reg.P6 = ((1.0*Ttrim[17]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[17])<<8)+(1.0*Ttrim[16])):(((1.0*Ttrim[17])<<8)+(1.0*Ttrim[16]));
+								reg.P7 = ((1.0*Ttrim[19]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[19])<<8)+(1.0*Ttrim[18])):(((1.0*Ttrim[19])<<8)+(1.0*Ttrim[18]));
+								reg.P8 = ((1.0*Ttrim[21]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[21])<<8)+(1.0*Ttrim[20])):(((1.0*Ttrim[21])<<8)+(1.0*Ttrim[20]));
+								reg.P9 = ((1.0*Ttrim[23]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[23])<<8)+(1.0*Ttrim[22])):(((1.0*Ttrim[23])<<8)+(1.0*Ttrim[22]));		
+								//console.log(Ttrim);								
+							}
+							else if(dataIndex==24)
+							{								
+								reg.H1 = 1.0*Ttrim[dataIndex];
+								//console.log(Ttrim);	
+							}
+							else if(dataIndex==31)
+							{							
+								reg.H2 = ((1.0*Ttrim[26]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[26])<<8)+(1.0*Ttrim[25])):(((1.0*Ttrim[26])<<8)+(1.0*Ttrim[25]));
+								reg.H3 = 1.0*Ttrim[27];
+								reg.H4 = ((1.0*Ttrim[28]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[28])<<4)+(0x0F & (1.0*Ttrim[29]))):(((1.0*Ttrim[28])<<4)+(0x0F & (1.0*Ttrim[29])));
+								reg.H5 = ((1.0*Ttrim[30]) & (1 << 7))?(0xFFFF0000 |((1.0*Ttrim[30])<<4)+(0x0F & ((1.0*Ttrim[29])>>4))):(((1.0*Ttrim[30])<<4)+(0x0F & ((1.0*Ttrim[29])>>4)));
+								reg.H6 = 1.0*Ttrim[31];	
+								//console.log(Ttrim);	
+								console.log(reg);	
+							}
+						}						
+						else if(readMode==true)
+						{
+							 for(var i=0; i<value.length; i++)
+							 {
+								dataArry[dataIndex+i] = value[i];
+							 }
+								dataIndex=dataIndex+value.length-1;
+								//console.log(value);	
+								//console.log(dataIndex);	
+							
+							if(dataIndex==2)
+							{
+								var t1,t2,t3,t4,t5,t,t_f,res;
+
+								t1 = (1.0*dataArry[0])<<12;
+								t2 = (1.0*dataArry[1])<<4;
+								t3 = (1.0*dataArry[2])>>4;
+								t = t1 | t2 | t3;
+								t1 = (t >> 3);
+								t2 = (reg.T1 << 1);
+								t3 = t1-t2;
+								t4 = (t3* reg.T2);
+								t5 = t4>> 11;
+								t1=(t >> 4)- (reg.T1);
+								t2=(t >> 4) - (reg.T1);
+								t3=(t1 * t2) >> 12;
+								t4=(t3 * reg.T3)>> 14;
+								t_f = t4 + t5;
+								tempFine  = t_f;
+								res = (t_f * 5.0 + 128.0);
+								res = res >> 8;
+								res = res/100.0;
+								nowTmp=Math.round(100*res)/100;
+								//console.log(dataArry);		
+							}
+							else if(dataIndex==4)
+							{
+								var h1,h2,h3,h4,h5,h6,h7,res;
+								var h_raw =  (1.0*dataArry[3])<<8 |  (1.0*dataArry[4]);							
+								var x1 = tempFine - 76800.0;
+								
+								h1 = h_raw << 14;
+								h2 = reg.H4 << 20;
+								h3 = reg.H5 * x1;
+								h4 = h1 - h2 - h3 + 16384.0;	
+								h1 = h4 >>15;
+								h2 = x1 * reg.H6;
+								h2 = h2 >>10;
+								h3 = x1 * reg.H3;
+								h4 = h3 >>11 + 32768.0;
+								h5 = h2 * h4 >>10;
+								h6 = h5*1.0 + 2097152.0;
+								h7 = h6 * reg.H2;
+								h5 = (h7*1.0 + 8192.0)>>14;
+								x1 = h1 * h5;								
+								h1 = (x1 >> 15) * (x1 >> 15);
+								h2 = h1 >>7;
+								h3 = h2 * reg.H1;
+								x1 = x1 - (h3 >> 4);
+								x1 = (x1 < 0.0 ? 0.0 : x1);
+								x1 = (x1 > 419430400.0 ? 419430400.0 : x1);
+								res = (x1 >> 12)/1024.0;
+								//console.log(res);	
+								nowHmd = Math.round(100*res)/100;	
+								//console.log(dataArry);							
+							}
+							else if(dataIndex==7)
+							{
+
+								var p1,p2,p3,p4,p5,p,pres,res;
+								p1 = (dataArry[5]<<12);
+								p2 = (dataArry[6]<<4);
+								p3 = dataArry[7]>>4;
+								p = p1 | p2 | p3;
+								p1 = (tempFine/ 2.0) - 64000.0;
+								p2 = (((p1 / 4.0) * (p1 / 4.0)) / 2048.0) * reg.P6;
+								p2 = p2 + ((p1 * reg.P5) * 2.0);
+								p2 = (p2 / 4.0) + (reg.P4 * 65536.0);
+								p1 = (((reg.P3 * (((p1 / 4.0) * (p1 / 4.0)) / 8192.0)) / 8.0)  + ((reg.P2 * p1) / 2.0)) / 262144.0;
+								p1 = ((32768.0 + p1) * reg.P1) / 32768.0;
+								pres = ((1048576.0 - p) - (p2 / 4096.0)) * 3125.0;
+								if (pres < 0x80000000)
+									pres = (pres * 2.0) / p1;									
+								else
+									pres = (pres / p1) * 2.0;
+								p1 = (reg.P9 * (((pres / 8.0) * (pres / 8.0)) / 8192.0)) / 4096.0;
+								p2 = ((pres / 4.0) * reg.P8) / 8192.0;
+								pres = pres + ((p1 + p2 + reg.P7) / 16.0);
+								pres=pres/100.0;
+								nowBar =  Math.round(100*pres)/100;
+								
+								//console.log(dataArry);	
+								var str = " " + nowTmp + " ℃ " + nowHmd + " ％ " + nowBar + " hPa";
+								console.log(str);
+								dataIndex=0;
+								IsDataReady=true;							
+							}
+						}
+						dataIndex = dataIndex + 1;
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				initButton.disabled = true;
+				startButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+	</script>
+  </body>
+</html>
