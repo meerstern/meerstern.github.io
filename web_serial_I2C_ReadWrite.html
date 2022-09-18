@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>I2C Read/Write</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:12pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			fieldset { font-size:12pt; line-height:0.1em; padding:  20px;}
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>I2C Read/Writeテストツール </span></h1>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<br/>
+	<br/>
+	<fieldset>    
+	<legend>全般設定</legend>
+	<div>
+	  <p>デバイスアドレス</p>　　
+	  <input type="text" id="devAddr" name="devAddr"  placeholder="ex) 0x64 or 100"></p>	
+	</div>	
+	<div>
+	  <p>デバイスアドレスサイズ</p>　　
+      <input type="radio" id="bit8" name="bitLen" value="bit8" checked onchange="bitChange();">
+      <label for="bit8">8bit</label>
+      <input type="radio" id="bit7" name="bitLen" value="bit7" onchange="bitChange();">
+      <label for="bit7">7bit</label>
+	</div>	
+	</fieldset>	
+	<br/>	
+	<fieldset>    
+	<legend>書込</legend>
+	<div>
+	  <p>レジスタ</p>　　
+	  <input type="text" id="writeReg" name="writeReg"  placeholder="ex) 0x31 or 49"></p>	
+	</div>	
+	<div>
+	  <p>書込データ</p>　　
+	  <input type="text" id="writeData" name="writeData"  placeholder="ex) 0x20,0x21・・・"></p>	
+	</div>	
+	<button id="write-button" type="button" disabled>書込</button>
+	</fieldset>	
+	<br/>
+	<fieldset>    
+	<legend>読込</legend>
+	<div>
+	  <p>レジスタ</p>　　
+	  <input type="text" id="readReg" name="readReg"  placeholder="ex) 0x31 or 49"></p>	
+	</div>	
+	<div>
+	  <p>読込データサイズ</p>　　
+	  <input type="text" id="readLen" name="readLen"  placeholder="ex) 0x10 or 16"></p>	
+	</div>
+	<h2><span id="res_string" >読込値</span></h2>	
+	<button id="read-button" type="button" disabled>読込</button>
+	<button id="clear-button" type="button">クリア</button>
+	</fieldset>	
+	
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	I2C Read Write Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const readButton = document.getElementById ('read-button');
+	const writeButton = document.getElementById ('write-button');
+	const clearButton = document.getElementById ('clear-button');
+	const bit8 = document.getElementById("bit8");
+	const devAddr = document.getElementById("devAddr");
+	const wReg = document.getElementById("writeReg");
+	const wData = document.getElementById("writeData");
+	const rReg = document.getElementById("readReg");
+	const rLen = document.getElementById("readLen");
+	const rRes = document.getElementById("res_string");
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = [];
+	let Is8bitAddr=true;
+	let intDevAddress=0;
+	let wdataArry=[];
+	let intWReg = 0;
+	let intRReg = 0;
+	let intRLen = 0;
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	function bitChange()
+	{
+		if(bit8.checked==true)
+			Is8bitAddr=true;
+		else
+			Is8bitAddr=false;
+	}
+	
+	function setDeviceAddress()
+	{
+		if(devAddr.value!="")
+		{
+			if(devAddr.value[1]=="x")
+				intDevAddress = parseInt(devAddr.value, 16);
+			else
+				intDevAddress = parseInt(devAddr.value, 10);
+				
+			if(Is8bitAddr==false)
+				intDevAddress = intDevAddress<<1;
+			else
+				intDevAddress = intDevAddress&0xFE;
+		}
+		//console.log(intDevAddress);	
+	}
+	
+	function setWriteReg()
+	{
+		if(wReg.value!="")
+		{
+			if(wReg.value[1]=="x")
+				intWReg=parseInt(wReg.value, 16);
+			else
+				intWReg=parseInt(wReg.value, 10);				
+		}
+		//console.log(intWReg);	
+	}
+	
+	function setWriteData()
+	{
+		if(wData.value!="")
+		{
+			wdataArry=[];
+			const itemData = wData.value.split(',');
+			for(var i=0; i<itemData.length; i++)
+			{
+				if(itemData[i][1]=="x")
+					wdataArry.push(parseInt(itemData[i], 16));
+				else
+					wdataArry.push(parseInt(itemData[i],10));	
+			}
+			//console.log(wdataArry);
+		}		
+	}
+	
+	function setReadReg()
+	{
+		if(rReg.value!="")
+		{
+			if(rReg.value[1]=="x")
+				intRReg=parseInt(rReg.value, 16);
+			else
+				intRReg=parseInt(rReg.value, 10);				
+		}
+		//console.log(intWReg);	
+	}
+	
+	function setReadLen()
+	{
+		if(rLen.value!="")
+		{
+			if(rLen.value[1]=="x")
+				intRLen=parseInt(rLen.value, 16);
+			else
+				intRLen=parseInt(rLen.value, 10);				
+		}
+		//console.log(intWReg);	
+	}
+	
+	//Clear Read Data
+	clearButton.addEventListener('click', (event) =>
+	{
+		document.getElementById("res_string").innerText = "読込値";
+	});
+	
+
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		writeButton.disabled = false;
+		readButton.disabled = false;
+		
+        //Write Button
+		writeButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+            setDeviceAddress();
+			setWriteReg();
+			setWriteData();
+			
+			if(devAddr.value!="" && wReg.value!="" && wData.value!="")
+			{
+				const bytes1 = new Uint8Array([0x53, intDevAddress, wdataArry.length+1, intWReg]);
+				const bytes2 = Uint8Array.from(wdataArry);
+				const bytes3 = new Uint8Array([0x50]);
+				const writer = port.writable.getWriter();		
+				writer.write(bytes1);
+				Sleep(10);
+				writer.write(bytes2);
+				Sleep(10);
+				writer.write(bytes3);
+				writer.releaseLock();
+			}				
+          }
+        });
+		
+		//Read Button
+		readButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+			if(devAddr.value!="" && rReg.value!="" && rLen.value!="")
+			{		
+				setDeviceAddress();
+				setReadReg();
+				setReadLen();
+				
+				const bytes1 = new Uint8Array([0x53, intDevAddress, 0x01, intRReg, 0x53, intDevAddress+1, intRLen, 0x50]);
+				const writer = port.writable.getWriter();
+				dataArry=[];
+				dataIndex=0;
+				writer.write(bytes1);
+				writer.releaseLock();
+			}
+          }
+        });
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{						
+						//console.log(value);						
+						dataArry[dataIndex] = " 0x"+value[0].toString(16);
+						document.getElementById("res_string").innerText = dataArry;
+						dataIndex = dataIndex+1;
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				readButton.disabled = true;
+				writeButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+	</script>
+  </body>
+</html>
