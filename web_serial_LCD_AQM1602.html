@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LCD AQM1602</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>LCD AQM1602 テストツール </span></h1>
+	<input type="text" id="lcd-string1" name="lcd-string1" maxlength="16" size="28" placeholder="1行目文字列(半角英数、最大16文字)"/>
+	<br/>
+	<input type="text" id="lcd-string2" name="lcd-string2" maxlength="16" size="28" placeholder="2行目文字列(半角英数、最大16文字)"/>
+	<br/>
+	<br/>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="init-button" type="button" disabled>初期化</button>
+	<button id="set-button" type="button" disabled>セット</button>
+	<button id="clear-button" type="button" disabled>クリア</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	LCD AQM1602 Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const initButton = document.getElementById ('init-button');
+	const setButton = document.getElementById ('set-button');
+	const clearButton = document.getElementById ('clear-button');
+	const str1 = document.getElementById ('lcd-string1');
+	const str2 = document.getElementById ('lcd-string2');
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let closed;	
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		initButton.disabled = false;
+		setButton.disabled = false;
+		clearButton.disabled = false;
+		
+        //Set Init
+		initButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+            const bytes1 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x38, 0x50]);
+			const bytes2 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x39, 0x50]);//Ex Start
+			const bytes3 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x14, 0x50]);//Frq
+			const bytes4 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x78, 0x50]);//Contrast
+			const bytes5 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x56, 0x50]);//Power,Contrast
+			const bytes6 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x6C, 0x50]);//Follower
+			const bytes7 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x38, 0x50]);//End Ex
+			const bytes8 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x01, 0x50]);//Clear
+			const bytes9 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x0C, 0x50]);//Disp ON
+			
+            const writer = port.writable.getWriter();
+            writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+			Sleep(30);
+			writer.write(bytes3);
+			Sleep(30);
+			writer.write(bytes4);
+			Sleep(30);
+			writer.write(bytes5);
+			Sleep(30);
+			writer.write(bytes6);
+			Sleep(30);
+			writer.write(bytes7);
+			Sleep(30);
+			writer.write(bytes8);
+			Sleep(30);
+			writer.write(bytes9);
+            writer.releaseLock();			
+          }
+        });
+		
+		//Set String
+		setButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {
+		    const writer = port.writable.getWriter();
+            const bytes1 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x01, 0x50]);//Home Line1
+			const bytes2 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0xC0, 0x50]);//Home Line2
+			const bytes3 = new Uint8Array([0x53, 0x7C, 0x09, 0x40]);
+			const bytes5 = new Uint8Array([0x50]);			
+			let   strByte1=[];
+			let   strByte2=[];
+			
+			//Line1
+			for(dataIndex=0; dataIndex<str1.value.length; dataIndex++)
+			{
+				strByte1.push(str1.value[dataIndex].charCodeAt(0));	
+			}
+			
+			for(dataIndex=str1.value.length; dataIndex<16; dataIndex++)
+			{
+				strByte1.push(32);//Space	
+			}			
+			const bytes6 = Uint8Array.from(strByte1);			
+
+            writer.write(bytes1);
+			Sleep(100);
+			writer.write(bytes3);
+			Sleep(100);
+			writer.write(bytes6.slice(0, 8));	
+			Sleep(100);
+			writer.write(bytes5);
+			Sleep(100);
+			writer.write(bytes3);
+			Sleep(100);
+			writer.write(bytes6.slice(8));	
+			Sleep(100);
+			writer.write(bytes5);
+			Sleep(300);			
+		
+			//Line2
+			strByte2=[];
+			for(dataIndex=0; dataIndex<str2.value.length; dataIndex++)
+			{				
+				strByte2.push(str2.value[dataIndex].charCodeAt(0));	
+			}
+
+			for(dataIndex=str2.value.length; dataIndex<16; dataIndex++)
+			{
+				strByte2.push(32);//Space	
+			}				
+     
+			const bytes7 = Uint8Array.from(strByte2);
+			writer.write(bytes2);
+			Sleep(100);
+			writer.write(bytes3);
+			Sleep(100);
+			writer.write(bytes7.slice(0, 8));
+			Sleep(100);
+			writer.write(bytes5);
+			Sleep(100);
+			writer.write(bytes3);
+			Sleep(100);			
+			writer.write(bytes7.slice(8));
+			Sleep(100);
+			writer.write(bytes5);
+            writer.releaseLock();
+          }
+        });
+		
+		//Clear String
+		clearButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {		  
+            const bytes1 = new Uint8Array([0x53, 0x7C, 0x02, 0x00, 0x01, 0x50]);			
+            const writer = port.writable.getWriter();
+            writer.write(bytes1);
+            writer.releaseLock();
+          }
+        });
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{
+						//Only Send, Not Used
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				initButton.disabled = true;
+				setButton.disabled = true;
+				clearButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+
+
+	</script>
+  </body>
+</html>
