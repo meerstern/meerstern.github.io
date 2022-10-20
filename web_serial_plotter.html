@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <title>WeB Serial Plotter</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>Webシリアルプロットツール </span></h1>
+	<style>
+	#t_chart {max-width:800px;max-height:300px;}
+	</style>
+	<canvas id="t_chart"></canvas>
+
+	
+	<div>
+	  <p>ボーレート</p>　　
+      <input type="radio" id="b9600" name="baud" value="b9600" checked onchange="BaudChange();">
+      <label for="b9600">9600</label>
+      <input type="radio" id="b19200" name="baud" value="b19200" onchange="BaudChange();">
+      <label for="b19200">19200</label>
+	  <input type="radio" id="b38400" name="baud" value="b38400" onchange="BaudChange();">
+      <label for="b38400">38400</label>
+      <input type="radio" id="b57600" name="baud" value="b57600" onchange="BaudChange();">
+      <label for="b57600">57600</label>
+	  <input type="radio" id="b115200" name="baud" value="b115200" onchange="BaudChange();">
+      <label for="b115200">115200</label>
+	</div>	
+
+	<br/>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="save-button" type="button">保存</button>
+	<button id="clear-button" type="button">クリア</button>
+	<h3>
+		<span>
+		対応フォーマット:　XXX,XXX,XXX,・・・,(最大8データ)\r\n
+		</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	Serial Plotter Tool
+	 *	Copyright (c) 2022
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const saveButton = document.getElementById ('save-button');
+	const clearButton = document.getElementById ('clear-button');
+	let tChart = document.getElementById('t_chart');
+	
+	let tdata = 
+		{
+			labels: [],
+			datasets: [
+				{
+					label: 'Data1',
+					data: [],
+					borderColor: 'rgba(0, 0, 255, 1)'
+				},
+				{
+					label: 'Data2',
+					data: [],
+					borderColor: 'rgba(0, 100, 255, 1)'
+				}
+				,
+				{
+					label: 'Data3',
+					data: [],
+					borderColor: 'rgba(0, 150, 255, 1)'
+				},
+				{
+					label: 'Data4',
+					data: [],
+					borderColor: 'rgba(0, 200, 255, 1)'
+				},
+				{
+					label: 'Data5',
+					data: [],
+					borderColor: 'rgba(255, 50, 50, 1)'
+				},
+				{
+					label: 'Data6',
+					data: [],
+					borderColor: 'rgba(255, 100, 50, 1)'
+				},
+				{
+					label: 'Data7',
+					data: [],
+					borderColor: 'rgba(255, 150, 0, 1)'
+				},
+				{
+					label: 'Data8',
+					data: [],
+					borderColor: 'rgba(255, 200, 0, 1)'
+				}			
+			]
+		};
+	
+	
+	let toptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: 'データ'}}
+		},
+		plugins:{legend:{display: true}}
+	};
+	
+	
+	let tmpChart = new Chart(tChart, {
+		type: 'line',
+		data: tdata,
+		options: toptions
+	});
+	
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = Array(1000);
+	let chartIndex=0;
+	let baudrate = 9600;
+	
+	//Baudrate Changed Event
+	function BaudChange()
+	{
+		if(b9600.checked==true)
+		{
+			baudrate = 9600;	
+		}
+		else if(b19200.checked==true)
+		{			
+			baudrate = 19200;			
+		}
+		else if(b38400.checked==true)
+		{			
+			baudrate = 38400;			
+		}
+		else if(b57600.checked==true)
+		{			
+			baudrate = 57600;			
+		}
+		else if(b115200.checked==true)
+		{			
+			baudrate = 115200;			
+		}
+    }
+	
+	//Graph Clear
+	clearButton.addEventListener('click', (event) =>
+	{
+		chartIndex=0;
+		tdata.labels=[];
+		tdata.datasets[0].data=[];
+		tdata.datasets[1].data=[];	
+		tdata.datasets[2].data=[];	
+		tdata.datasets[3].data=[];	
+		tdata.datasets[4].data=[];			
+		tdata.datasets[5].data=[];			
+		tdata.datasets[6].data=[];			
+		tdata.datasets[7].data=[];			
+		tmpChart.update();
+
+	});
+	
+	//Save Data
+	saveButton.addEventListener('click', (event) =>
+	{
+		var strCsv = "time,data1,data2,data3,data4,data5,data6,data7,data8,\n";
+		
+		for(var i=0; i<chartIndex; i++)
+		{
+			strCsv = strCsv + tmpChart.data.labels[i] + ","
+							+ tmpChart.data.datasets[0].data[i] + ","
+							+ tmpChart.data.datasets[1].data[i] + ","
+							+ tmpChart.data.datasets[2].data[i] + ","
+							+ tmpChart.data.datasets[3].data[i] + ","
+							+ tmpChart.data.datasets[4].data[i] + ","
+							+ tmpChart.data.datasets[5].data[i] + ","
+							+ tmpChart.data.datasets[6].data[i] + ","
+							+ tmpChart.data.datasets[7].data[i] + ",\n";
+				
+		}
+
+		var doc = document.createElement("a");
+		doc.href = 'data:text/csv,' + encodeURIComponent(strCsv);
+		doc.download = "SerialData.csv";
+		doc.click();
+	});
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: baudrate });
+		
+        //Set Init
+		if (port && port.writable)
+		{		  
+			//Nothing to do for writing data
+		}
+		
+		connectButton.innerText = '切断';	
+		
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{						
+						//console.log(value);
+						//console.log(dataIndex);
+						if(value==0x0D)// Get Line
+						{
+							var text_decoder = new TextDecoder("utf-8");
+							var strText = text_decoder.decode(Uint8Array.from(dataArry).buffer);
+							const itemData = strText.split(',');
+							
+							for(var i=0; i<itemData.length; i++)
+							{
+								if(i<8)
+								{
+									tmpChart.data.datasets[i].data[chartIndex] = parseFloat(itemData[i]);
+								}
+							}
+							const dt = new Date();
+							const d = new Intl.DateTimeFormat("ja-jp", {
+							  hour: "2-digit",
+							  minute: "2-digit",
+							  second: "2-digit",
+							  fractionalSecondDigits: 3,
+							}).format(dt);
+							tmpChart.data.labels[chartIndex] = d;								
+							tmpChart.update();								
+							chartIndex=chartIndex+1;
+							dataArry=[];
+							dataIndex = 0;
+						}
+						else if(value==0x0A)
+						{
+							//Nothing to do 
+						}
+						else
+						{
+							dataArry[dataIndex] = value;
+							dataIndex = dataIndex + 1;
+						}
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+	</script>
+  </body>
+</html>
