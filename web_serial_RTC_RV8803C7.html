@@ -87,7 +87,7 @@
 			var sec  = nowdate.getSeconds();
 			var week_reg =Math.pow(2,week);
 		  
-            const bytes = new Uint8Array([0x53, 0x64, 0x08, 0x00, parseInt(sec, 16), parseInt(min, 16), parseInt(hour, 16), parseInt(week_reg, 16), parseInt(date, 16), parseInt(mon, 16), parseInt(year%1000, 16), 0x50]);
+            const bytes = new Uint8Array([0x53, 0x64, 0x08, 0x00, parseInt(sec, 16), parseInt(min, 16), parseInt(hour, 16), parseInt(week_reg, 10), parseInt(date, 16), parseInt(mon, 16), parseInt(year%1000, 16), 0x50]);
             const writer = port.writable.getWriter();
             writer.write(bytes);
             writer.releaseLock();
