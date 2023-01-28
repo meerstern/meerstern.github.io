@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<!-- saved from url=(0056)https://meerstern.github.io/web_serial_RTC_RV8803C7.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
     <title>USBシリアルI2C変換基板:RTC RV-8803-C7</title>
 	<style>
 			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
@@ -13,12 +13,12 @@
   </head>
   <body>
 	<h1><span>RTC RV-8803-C7 テストツール </span></h1>
-	<h2><span id="msg_string" >時刻取得ボタンを押すと時刻が表示されます</span></h2>
-	<button id="connect-button" type="button" disabled>接続</button>
-	<button id="get-button" type="button" disabled>日時取得</button>
-	<button id="set-button" type="button" disabled>日時設定</button>
-	<button id="flg-get-button" type="button" disabled>REG取得</button>
-	<button id="flg-set-button" type="button" disabled>REG設定</button>
+	<h2><span id="msg_string">2023/1/28 13:12:48</span></h2>
+	<button id="connect-button" type="button">接続</button>
+	<button id="get-button" type="button" disabled="">日時取得</button>
+	<button id="set-button" type="button" disabled="">日時設定</button>
+	<button id="flg-get-button" type="button" disabled="">REG取得</button>
+	<button id="flg-set-button" type="button" disabled="">REG設定</button>
 	<h3>
 		<span>
 		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザのみでI2Cデバイスのテストをするツールです</span>
@@ -85,12 +85,13 @@
 			var hour = nowdate.getHours();
 			var min  = nowdate.getMinutes();
 			var sec  = nowdate.getSeconds();
-			var week_reg =Math.pow(2,week);
+			var week_reg = Math.pow(2,week);
 		  
-            const bytes = new Uint8Array([0x53, 0x64, 0x08, 0x00, parseInt(sec, 16), parseInt(min, 16), parseInt(hour, 16), parseInt(week_reg, 10), parseInt(date, 16), parseInt(mon, 16), parseInt(year%1000, 16), 0x50]);
+            const bytes = new Uint8Array([0x53, 0x64, 0x08, 0x00, parseInt(sec, 16), parseInt(min, 16), parseInt(hour, 16), week_reg, parseInt(date, 16), parseInt(mon, 16), parseInt(year%1000, 16), 0x50]);
             const writer = port.writable.getWriter();
             writer.write(bytes);
             writer.releaseLock();
+
 
           }
         });
@@ -136,23 +137,24 @@
 				  
 				  
 					if (value && !regMode)
-					{						
+					{	
+						var dayOfWeekStr = [ "日", "月", "火", "水", "木", "金", "土" ];					
 						switch(dataIndex)
 						{
 							case 0:
-								dateTime.s = value[0].toString(16);
+								dateTime.s = ('00' + value[0].toString(16)).slice(-2);
 								break;
 							case 1:
-								dateTime.m = value[0].toString(16);
+								dateTime.m = ('00' + value[0].toString(16)).slice(-2);
 								break;
 							case 2:
-								dateTime.h = value[0].toString(16);
+								dateTime.h = ('00' + value[0].toString(16)).slice(-2);
 								break;
 							case 3:
-								dateTime.w = value[0].toString(16);
+								dateTime.w = dayOfWeekStr[(Math.log(value[0]) / Math.log(2))];
 								break;
 							case 4:
-								dateTime.d = value[0].toString(16);
+								dateTime.d =  ('00' + value[0].toString(16)).slice(-2);
 								break;
 							case 5:
 								dateTime.M = value[0].toString(16);
@@ -166,10 +168,13 @@
 
 						if(dataIndex==6)
 						{
-								str="20"+dateTime.Y+"/"+dateTime.M+"/"+dateTime.d + " "+dateTime.h+":"+dateTime.m+":"+dateTime.s;
-								console.log(str);
-								document.getElementById("msg_string").innerText = str;
-								dataIndex=0;
+								
+							str = "20" + dateTime.Y + "/" + dateTime.M + "/" + dateTime.d + "("+dateTime.w + ")" 
+									+ dateTime.h + ":" + dateTime.m + ":"+dateTime.s;
+							console.log(str);
+							document.getElementById("msg_string").innerText = str;
+							dataIndex=0;
+								
 						}
 						else
 						{
@@ -236,5 +241,6 @@
 	}
 
 	</script>
-  </body>
-</html>
+  
+
+</body></html>
