@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Web Serial BLE</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }
+			tarea{width: 100%;height: 6em;}			
+	</style>
+  </head>
+  <body>
+	<h1><span>WebシリアルBLEツール<br/>　For BGX / Lyra Series</span></h1>
+
+	<div>
+	  <p>Mode</p>　　	
+      <input type="radio" id="stream" name="mode" value="stream" checked onchange="modeChange();">
+      <label for="stream">Stream</label>
+      <input type="radio" id="command" name="mode" value="command" onchange="modeChange();">
+      <label for="command">Command</label>
+	</div>	
+
+	<br/>
+	<textarea id="console-text" cols="35" rows="10" disabled></textarea>
+	<br/>
+	<br/>
+	<input id="input-text" type="text" size="33"></input>
+	<button id="send-button" type="button" disabled>送信</button>
+	<br/>
+	<br/>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="save-button" type="button">保存</button>
+	<button id="clear-button" type="button">クリア</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://ssci.to/5794">BLE5モジュール変換基板</a>もしくは
+		<a href="https://ssci.to/8649">BLE5モジュール変換基板V2</a>で<br/>
+		ブラウザを介してシリアル通信をテストするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<h3><span>一度に送信できる最大文字数は250文字です</span></h3>
+	<h3><span>「GATT Error: Not paired」エラーが発生する場合は事前に<br/>OS側の設定画面でデバイスを追加してください</span></h3>
+	<footer>
+	<p>Copyright (c) 2023 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	Web Serial BLE Tool For BGX13
+	 *	Copyright (c) 2023
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const saveButton = document.getElementById ('save-button');
+	const clearButton = document.getElementById ('clear-button');
+	const sendButton = document.getElementById ('send-button');
+	const consoleText = document.getElementById ('console-text');
+	const inputText = document.getElementById ('input-text');
+	
+	const service_uuid = "331a36f5-2459-45ea-9d95-6142f0c4b307";
+	const rx_uuid = "a9da6040-0823-4995-94ec-9ce41ca28833";//PC->BGX13(Notify OFF)
+	const tx_uuid = "a73e9a10-628f-4494-a099-12efaf72258f";//BGX13->PC(Notify ON)
+	const mode_uuid = "75a9f022-af03-4e41-b4bc-9de90a47d50b";
+
+	const bgxMode = {
+		stream: 1,
+		local : 2,
+		remote :3
+	};
+	
+	let mode = bgxMode.stream;	
+	let device;
+	let consoleStr = "";
+	let connected = false;
+	let closed;
+	let mode_characteristic;
+	let tx_characteristic;
+	let rx_characteristic;
+	
+	
+	async function modeChange()
+	{
+		if(stream.checked==true)
+			mode = bgxMode.stream;
+		else
+			mode = bgxMode.remote;
+			
+		if(connected && device && device.gatt.connected)
+		{
+			const md = new Uint8Array([mode]);
+			await mode_characteristic.writeValue(md);
+		}
+	}
+	
+	
+	function notification(event)
+	{
+		
+		let value = event.target.value;
+		let str = "";
+		for (let i = 0; i < value.byteLength; i++)
+		{
+			str += String.fromCharCode(value.getUint8(i));
+		}
+		consoleStr = consoleStr + str;
+		consoleText.value = consoleStr;
+		console.log(str);
+	}
+	
+	function disconnected()
+	{
+		connectButton.innerText = '接続';
+		sendButton.disabled = true;			
+		connected = false;
+	}
+	
+	//Save Concole
+	saveButton.addEventListener('click', (event) =>
+	{
+		let doc = document.createElement("a");
+		doc.href = 'data:text/csv,' + encodeURIComponent(consoleStr);
+		doc.download = "Console.txt";
+		doc.click();
+	});
+	
+	//Clear Console
+	clearButton.addEventListener('click', (event) =>
+	{
+		consoleText.value = "";
+		consoleStr = "";
+	});
+
+	//Connect BLE Device 
+	async function connectBLE()
+	{
+        
+		try
+		{
+			console.log("Searching Bluetooth Device");
+			device = await navigator.bluetooth.requestDevice({
+			  filters: [{ services: [service_uuid] }],
+			  optionalServices: [service_uuid]
+			  //acceptAllDevices: true
+			  //optionalServices: ['battery_service'],
+			});
+			
+			console.log("Connecting to GATT Server");			
+			await device.addEventListener('gattserverdisconnected', disconnected);
+			const server = await device.gatt.connect();
+			
+			console.log("Getting Primary Service");
+			const service = await server.getPrimaryService(service_uuid);
+			
+			console.log("Getting Mode Characteristic");		
+			mode_characteristic = await service.getCharacteristic(mode_uuid);
+			
+			console.log("Getting RX Characteristic");		
+			rx_characteristic = await service.getCharacteristic(rx_uuid);
+			
+			console.log("Getting TX Characteristic");		
+			tx_characteristic = await service.getCharacteristic(tx_uuid);	
+			
+			console.log('Enable TX Notification');		
+			await tx_characteristic.startNotifications();
+			
+			console.log('Notification Started');
+			await tx_characteristic.addEventListener('characteristicvaluechanged', notification);
+		
+			const md = new Uint8Array([mode]);
+			await mode_characteristic.writeValue(md);		
+
+			connectButton.innerText = '切断';	
+			sendButton.disabled = false;	
+			connected = true;		
+
+			
+			//Send Button Event
+			sendButton.addEventListener('click', async(event) =>
+			{
+				if(connected && device && device.gatt.connected)
+				{
+					let val_arr = new Uint8Array(inputText.value.length+1)
+					for (let i = 0; i < inputText.value.length; i++) {
+						let val = inputText.value[i].charCodeAt(0);
+						val_arr[i] = val;
+					}
+					val_arr[inputText.value.length]=0x0d;//return code			
+					await rx_characteristic.writeValue(val_arr);
+					inputText.value = "";
+				}
+			
+			});
+			console.log('Ready');		
+		}
+		catch (error)
+		{
+			console.log(error);
+			alert(error);	
+			if(device && device.gatt.connected)
+				device.gatt.disconnect();
+			connected = false;
+		}
+		finally
+		{
+
+		}
+	
+	}
+	  
+	if (navigator.bluetooth) 
+	{		
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (device)
+			{		
+				connectButton.innerText = '接続';
+				sendButton.disabled = true;	
+				await closed;
+				device = undefined;
+			}
+			else
+			{
+				closed = connectBLE();
+			}
+		});	
+		connectButton.disabled = false;	
+	}	
+	else
+	{
+		alert('お使いのブラウザはWeb Bluetooth APIに対応していません \nEdgeもしくはchromeを使用してください');		
+	}	  
+	</script>
+  </body>
+</html>
