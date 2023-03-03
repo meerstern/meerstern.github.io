@@ -97,6 +97,30 @@
 		}
 	}
 	
+	async function sendString()
+	{
+		try
+		{
+			
+			if(connected && device && device.gatt.connected)
+			{
+				let val_arr = new Uint8Array(inputText.value.length+1)
+				for (let i = 0; i < inputText.value.length; i++) {
+					let val = inputText.value[i].charCodeAt(0);
+					val_arr[i] = val;
+				}
+				val_arr[inputText.value.length]=0x0d;//return code			
+				await rx_characteristic.writeValue(val_arr);
+				console.log(inputText.value);
+				inputText.value = "";				
+			}
+		}
+		catch (error)
+		{
+			console.log(error);
+		}	
+	}
+	
 	
 	function notification(event)
 	{
@@ -149,26 +173,26 @@
 			  //optionalServices: ['battery_service'],
 			});
 			
-			console.log("Connecting to GATT Server");			
+			//console.log("Connecting to GATT Server");			
 			await device.addEventListener('gattserverdisconnected', disconnected);
 			const server = await device.gatt.connect();
 			
-			console.log("Getting Primary Service");
+			//console.log("Getting Primary Service");
 			const service = await server.getPrimaryService(service_uuid);
 			
-			console.log("Getting Mode Characteristic");		
+			//console.log("Getting Mode Characteristic");		
 			mode_characteristic = await service.getCharacteristic(mode_uuid);
 			
-			console.log("Getting RX Characteristic");		
+			//console.log("Getting RX Characteristic");		
 			rx_characteristic = await service.getCharacteristic(rx_uuid);
 			
-			console.log("Getting TX Characteristic");		
+			//console.log("Getting TX Characteristic");		
 			tx_characteristic = await service.getCharacteristic(tx_uuid);	
 			
-			console.log('Enable TX Notification');		
+			//console.log('Enable TX Notification');		
 			await tx_characteristic.startNotifications();
 			
-			console.log('Notification Started');
+			//console.log('Notification Started');
 			await tx_characteristic.addEventListener('characteristicvaluechanged', notification);
 		
 			const md = new Uint8Array([mode]);
@@ -176,33 +200,11 @@
 
 			connectButton.innerText = '切断';	
 			sendButton.disabled = false;	
-			connected = true;		
-
+			connected = true;
 			
 			//Send Button Event
-			sendButton.addEventListener('click', async(event) =>
-			{
-				try{
-				
-					if(connected && device && device.gatt.connected)
-					{
-						let val_arr = new Uint8Array(inputText.value.length+1)
-						for (let i = 0; i < inputText.value.length; i++) {
-							let val = inputText.value[i].charCodeAt(0);
-							val_arr[i] = val;
-						}
-						val_arr[inputText.value.length]=0x0d;//return code			
-						await rx_characteristic.writeValue(val_arr);
-						inputText.value = "";
-					}
-				}
-				catch (error)
-				{
-					//console.log(error);
-				}
-			
-			});
-			console.log('Ready');		
+			sendButton.addEventListener('click', sendString);
+			console.log('Connected');		
 		}
 		catch (error)
 		{
@@ -229,6 +231,9 @@
 				sendButton.disabled = true;	
 				await closed;
 				device = undefined;
+				sendButton.removeEventListener('click', sendString);				
+				rx_characteristic = undefined;
+				tx_characteristic = undefined;
 			}
 			else
 			{
