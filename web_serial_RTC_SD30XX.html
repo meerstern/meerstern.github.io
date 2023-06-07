@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <title>RTC SD30XX</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>RTC SD3031/SD3077/SD3078 テストツール </span></h1>
+	<h2><span id="msg_string">時刻取得ボタンを押すと時刻が表示されます</span></h2>
+	<button id="connect-button" type="button">接続</button>
+	<button id="get-button" type="button" disabled="">日時取得</button>
+	<button id="set-button" type="button" disabled="">日時設定</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザのみでI2Cデバイスのテストをするツールです</span>
+	</h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	const connectButton = document.getElementById ('connect-button');
+	const getButton = document.getElementById ('get-button');
+	const setButton = document.getElementById ('set-button');
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dateTime = {s:"",m:"",h:"",w:"",d:"",M:"",Y:"",str:""};
+	let dataIndex = 0;
+	let str = "";
+	let closed;
+	
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+		
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断';	
+		getButton.disabled = false;
+		setButton.disabled = false;
+		
+        //Get Date Time
+		getButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable) 
+		  {		  
+            const bytes = new Uint8Array([0x53, 0x64, 0x01, 0x00, 0x53, 0x65, 0x07, 0x50]);
+            const writer = port.writable.getWriter();
+			dataIndex=0;
+            writer.write(bytes);
+            writer.releaseLock();
+          }
+        });
+		
+		//Set Date Time
+		setButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable)
+		  {
+		  
+			var nowdate=new Date();
+			var year = nowdate.getFullYear();
+			var mon  = nowdate.getMonth() + 1;
+			var date = nowdate.getDate();
+			var week = nowdate.getDay();
+			var hour = nowdate.getHours();
+			var min  = nowdate.getMinutes();
+			var sec  = nowdate.getSeconds();
+			
+            const bytes = new Uint8Array([0x53, 0x64, 0x08, 0x00, parseInt(sec, 16), parseInt(min, 16), parseInt(hour, 16)|0x80, parseInt(week, 16), parseInt(date, 16), parseInt(mon, 16), parseInt(year%1000, 16), 0x50]);
+			const wrtc1_en = new Uint8Array([0x53, 0x64, 0x02, 0x10, 0x80, 0x50]);
+			const wrtc23_en = new Uint8Array([0x53, 0x64, 0x02, 0x0F, 0xFF, 0x50]);
+			const wrtc1_dis = new Uint8Array([0x53, 0x64, 0x02, 0x10, 0x12, 0x50]);
+			const wrtc23_dis = new Uint8Array([0x53, 0x64, 0x02, 0x0F, 0x7B, 0x50]);
+
+            const writer = port.writable.getWriter();				
+			writer.write(wrtc1_en);
+			Sleep(10);
+			writer.write(wrtc23_en);
+			Sleep(10);
+            writer.write(bytes);
+			Sleep(10);
+			writer.write(wrtc23_dis);
+			Sleep(10);
+			writer.write(wrtc1_dis);
+			Sleep(10);			
+            writer.releaseLock();
+          }
+        });
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try
+			{
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+				  
+				  
+				  
+					if (value)
+					{
+						switch(dataIndex)
+						{
+							case 0:
+								dateTime.s = value[0].toString(16);
+								break;
+							case 1:
+								dateTime.m = value[0].toString(16);
+								break;
+							case 2:
+								dateTime.h = (value[0]&0x7F).toString(16);
+								break;
+							case 3:
+								dateTime.w = value[0].toString(16);
+								break;
+							case 4:
+								dateTime.d = value[0].toString(16);
+								break;
+							case 5:
+								dateTime.M = value[0].toString(16);
+								break;
+							case 6:
+								dateTime.Y = value[0].toString(16);
+								break;
+							default:
+								break;					
+						}
+
+						if(dataIndex==6)
+						{
+								var week ="";
+								if(dateTime.w == 0)
+									week = "sun";
+								else if(dateTime.w == 1)
+									week = "mon";
+								else if(dateTime.w == 2)
+									week = "tue";
+								else if(dateTime.w == 3)
+									week = "wed";		
+								else if(dateTime.w == 4)
+									week = "thr";		
+								else if(dateTime.w == 5)
+									week = "fri";
+								else if(dateTime.w == 6)
+									week = "sat";									
+								
+								str="20"+dateTime.Y+"/"+dateTime.M+"/"+dateTime.d + "("+ week +") "+dateTime.h+":"+('00'+dateTime.m).slice(-2)+":"+('00'+dateTime.s).slice(-2);
+								console.log(str);
+								document.getElementById("msg_string").innerText = str;
+								dataIndex=0;
+						}
+						else
+						{
+							dataIndex = dataIndex+1;
+						}
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+		
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				getButton.disabled = true;
+				setButton.disabled = true;	
+
+				reader.cancel();
+				await closed;
+				port = undefined;						
+				
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+
+		connectButton.disabled = false;
+	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+
+
+	</script>
+  
+</body></html>
