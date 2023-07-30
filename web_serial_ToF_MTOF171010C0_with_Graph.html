@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  
+    <meta charset="UTF-8">
+    <title>ToF SENSOR MTOF171010C0 with Graph</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>ToF測距センサ　MTOF171010C0 グラフツール </span></h1>
+	<style>
+	#distance_chart {max-width:800px;max-height:300px;}
+	</style>
+	<canvas id="distance_chart" style="display: block; box-sizing: border-box; height: 300px; width: 800px;" width="1000" height="375"></canvas>
+	<br>	
+	<button id="connect-button" type="button" disabled="disabled">接続</button>
+	<input id="start-button" type="button" value="開始">
+	<button id="save-button" type="button">保存</button>
+	<button id="clear-button" type="button">クリア</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザで
+		<a href="https://akizukidenshi.com/catalog/g/gM-14538/">ToF測距センサMTOF171000C0</a>のテストをするツールです</span>
+	</h3>
+	<h3><span>I2Cモードの場合はRXをGNDに接続してください</span></h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2023 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	ToF SENSOR MTOF171010C0 with Graph Tool
+	 *	Copyright (c) 2023
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const startButton = document.getElementById ('start-button');
+	const saveButton = document.getElementById ('save-button');
+	const clearButton = document.getElementById ('clear-button');
+	let dChart = document.getElementById('distance_chart');
+	
+	let ddata = {
+		labels: [],
+			datasets: [{
+				label: 'distance',
+				data: [],
+				borderColor: 'rgba(100, 100, 255, 1)'
+			}]
+	};
+	
+
+	let doptions = {
+		scales: {
+			x:{title:{display: true, text: '時刻'}},
+			y:{title:{display: true, text: '距離mm'}}
+		},
+		plugins:{legend:{display: false}}
+	};
+	
+	let disChart = new Chart(dChart, {
+		type: 'line',
+		data: ddata,
+		options: doptions
+	});
+	
+
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;	
+	let dataArry = Array(6);
+	let chartIndex=0;
+	let IsRunning = false;
+	let IsDataReady = false;
+	let nowDis = 0.0;
+	
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	//Graph Clear
+	clearButton.addEventListener('click', (event) =>
+	{
+		chartIndex=0;
+		ddata.labels=[];
+		ddata.datasets[0].data=[];	
+		disChart.update();
+	});
+	
+	//Save Data
+	saveButton.addEventListener('click', (event) =>
+	{
+		var strCsv = "time,distance,\n";
+		
+		for(var i=0; i<chartIndex; i++)
+		{
+			strCsv = strCsv + disChart.data.labels[i] + ","
+							+ disChart.data.datasets[0].data[i] + ",\n";		
+		}
+
+		var doc = document.createElement("a");
+		doc.href = 'data:text/csv,' + encodeURIComponent(strCsv);
+		doc.download = "Distance.csv";
+		doc.click();
+	});
+	
+	//Com Open & Recieve Data
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        //Set Init
+		connectButton.innerText = '切断';	
+		startButton.disabled = false;
+
+		
+		//Start Stop Control
+		startButton.addEventListener('click', (event) =>
+		{
+			IsRunning=IsRunning?false:true;
+			startButton.value=IsRunning?"停止":"開始";
+		});
+		
+		
+		//Interval Timer 1000msec=1sec
+		setInterval(function()
+		{	
+			//console.log("Interval");
+			if(IsDataReady==false)
+				getDistanceData();
+			if(IsRunning && IsDataReady)
+			{
+				const dt = new Date();
+				const d = new Intl.DateTimeFormat("ja-jp", {
+				  hour: "2-digit",
+				  minute: "2-digit",
+				  second: "2-digit",
+				}).format(dt);
+				disChart.data.datasets[0].data[chartIndex] = nowDis;
+				disChart.data.labels[chartIndex] = d;
+				disChart.update();
+				chartIndex=chartIndex+1;
+				IsDataReady=false;
+			}
+		},1000);
+		
+				
+		//Get Distance
+		function getDistanceData()
+		{
+          if (port && port.writable)
+		  {		  
+            const bytes1 = new Uint8Array([0x53, 0xA4, 0x01, 0xD3, 0x50]);
+			const bytes2 = new Uint8Array([0x53, 0xA5, 0x02, 0x50]);
+            const writer = port.writable.getWriter();
+			dataIndex=0;
+            writer.write(bytes1);
+			Sleep(30);
+			writer.write(bytes2);
+            writer.releaseLock();
+          }
+        }
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value) 
+					{						
+				
+						dataArry[dataIndex] = value;
+
+						if(dataIndex==1)
+						{								
+							var d = (dataArry[0]*256.0)+dataArry[1]*1.0;
+							nowDis = Math.round(10*d)/10;
+							var str=" " + nowDis + " mm";
+							console.log(str);
+							dataIndex=0;
+							IsDataReady=true;
+						}
+						else
+						{
+							dataIndex = dataIndex+1;
+						}
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+	
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続';
+				startButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+		connectButton.disabled = false;	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+	</script>
+  
+</body></html>
