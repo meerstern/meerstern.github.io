@@ -78,7 +78,7 @@
 	{
 		var cmd = "";
 		//Forward or Backward
-		if(-50 < x && x <50)
+		if(-100 < x && x <100)
 		{
 			//Forward
 			if( y > 0)
@@ -160,7 +160,7 @@
 		y_orig = height / 3;
 
 		ctx.beginPath();
-		ctx.arc(x_orig, y_orig, radius + 100, 0, Math.PI * 2, true);
+		ctx.arc(x_orig, y_orig, radius + 110, 0, Math.PI * 2, true);
 		ctx.fillStyle = '#ECE5E5';
 		ctx.fill();
 	}
