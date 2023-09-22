@@ -139,14 +139,14 @@
 		ctx.fillStyle = '#2020F0';
 		ctx.fill();
 		ctx.strokeStyle = '#ABABF6';
-		ctx.lineWidth = 8;
+		ctx.lineWidth = 0;
 		ctx.stroke();
 	}
 
 	function resize() 
 	{
 		width = window.innerWidth;
-		radius = 120;
+		radius = 180;
 		height = radius * 6.5;
 		ctx.canvas.width = width;
 		ctx.canvas.height = height;
@@ -160,7 +160,7 @@
 		y_orig = height / 3;
 
 		ctx.beginPath();
-		ctx.arc(x_orig, y_orig, radius + 30, 0, Math.PI * 2, true);
+		ctx.arc(x_orig, y_orig, radius + 100, 0, Math.PI * 2, true);
 		ctx.fillStyle = '#ECE5E5';
 		ctx.fill();
 	}
