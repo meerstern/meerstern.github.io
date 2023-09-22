@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Mobile Robot Controller</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h3 { font-size:6pt; text-align:center}
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }
+			tarea{width: 100%;height: 6em;}	
+			button{
+			  width:200px;
+			  justify-content: center;
+			  align-items: center;
+			}			
+	</style>
+</head>
+
+<body  style="position: fixed; font-family: 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif; 
+				color:rgb(128, 128, 128); font-size: xx-large;">
+    <h1 style="text-align:center">Mobile Robot Controller with Web Serial BLE</h1>
+	<div align="center"><button id="connect-button" type="button" disabled>接続</button></div>
+	<h3>
+		</br>
+		<span>
+		本ツールはブラウザを介して<a href="https://ssci.to/5794">BLE5モジュール変換基板</a>もしくは
+		<a href="https://ssci.to/8649">BLE5モジュール変換基板V2</a>とシリアル通信をするコントローラです</span>
+	</h3>
+	<h3>
+		<span>ブラウザはEdgeもしくはChromeのみ対応しています　「GATT Error: Not paired」が発生する場合は事前にOS側でデバイスを追加してください
+		</span>
+	</h3>
+	<p style="text-align: center;">
+        X: <span id="x_coordinate"> </span>
+        Y: <span id="y_coordinate"> </span>
+        Speed: <span id="speed"> </span> %
+    </p>
+    <canvas id="canvas"></canvas>
+	
+    <script>
+	/*	
+	 *	Mobile Robot Controller with Web Serial BLE
+	 *  Supported for BGX13 & Lyra P with Wireless Xpress
+	 *	Copyright (c) 2023
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const service_uuid = "331a36f5-2459-45ea-9d95-6142f0c4b307";
+	const rx_uuid = "a9da6040-0823-4995-94ec-9ce41ca28833";//PC->BGX13(Notify OFF)
+	const tx_uuid = "a73e9a10-628f-4494-a099-12efaf72258f";//BGX13->PC(Notify ON)
+	const mode_uuid = "75a9f022-af03-4e41-b4bc-9de90a47d50b";
+	const bgxMode = {
+		stream: 1,
+		local : 2,
+		remote :3
+	};
+	
+	let mode = bgxMode.stream;	
+	let device;
+	let consoleStr = "";
+	let connected = false;
+	let closed;
+	let mode_characteristic;
+	let tx_characteristic;
+	let rx_characteristic;
+		
+	let coord = { x: 0, y: 0 };
+	let inPaint = false;
+	var canvas, ctx;
+	var width, height, radius, x_orig, y_orig;
+	var x_rel, y_rel;
+		
+	function send(x,y)
+	{
+		var cmd = "";
+		//Forward or Backward
+		if(-20 < x && x <20)
+		{
+			//Forward
+			if( y > 0)
+			{
+				cmd = "fwd=" + y*10;
+			}
+			else
+			{
+				cmd = "bwd=" + y*(-10);
+			}
+		}
+		else//Left or Right
+		{
+			if( x > 0)
+			{
+				cmd = "rtn=" + x*10;
+			}
+			else
+			{
+				cmd = "ltn=" + x*(-10);
+			}
+		}
+		
+		if( Number.isNaN(cmd)==false && x!= (void 0) )
+		{
+			console.log(cmd);
+			if( connected == true )
+			{
+				sendCommand(cmd);
+			}				
+		}
+	}
+	
+
+	window.addEventListener('load', () => {
+
+		canvas = document.getElementById('canvas');
+		ctx = canvas.getContext('2d');          
+		resize(); 
+		
+		window.addEventListener('resize', resize);
+		document.addEventListener('mousedown', startDraw);
+		document.addEventListener('mouseup', stopDraw);
+		document.addEventListener('mousemove', Draw);
+		document.addEventListener('touchstart', startDraw);
+		document.addEventListener('touchend', stopDraw);
+		document.addEventListener('touchcancel', stopDraw);
+		document.addEventListener('touchmove', Draw);
+		document.getElementById("x_coordinate").innerText = 0;
+		document.getElementById("y_coordinate").innerText = 0;
+		document.getElementById("speed").innerText = 0;
+	});
+
+	function joystick(width, height)
+	{
+		ctx.beginPath();
+		ctx.arc(width, height, radius, 0, Math.PI * 2, true);
+		ctx.fillStyle = '#2020F0';
+		ctx.fill();
+		ctx.strokeStyle = '#ABABF6';
+		ctx.lineWidth = 8;
+		ctx.stroke();
+	}
+
+	function resize() 
+	{
+		width = window.innerWidth;
+		radius = 120;
+		height = radius * 6.5;
+		ctx.canvas.width = width;
+		ctx.canvas.height = height;
+		background();
+		joystick(width / 2, height / 3);
+	}
+
+	function background() 
+	{
+		x_orig = width / 2;
+		y_orig = height / 3;
+
+		ctx.beginPath();
+		ctx.arc(x_orig, y_orig, radius + 30, 0, Math.PI * 2, true);
+		ctx.fillStyle = '#ECE5E5';
+		ctx.fill();
+	}
+
+
+
+	function getPosition() 
+	{
+		var mouse_x = event.clientX || event.touches[0].clientX;
+		var mouse_y = event.clientY || event.touches[0].clientY;
+		coord.x = mouse_x - canvas.offsetLeft;
+		coord.y = mouse_y - canvas.offsetTop;
+	}
+
+	function isInCircule()
+	{
+		var current_radius = Math.sqrt(Math.pow(coord.x - x_orig, 2) + Math.pow(coord.y - y_orig, 2));
+		if (radius > current_radius) 
+			return true
+		else 
+			return false
+	}
+
+
+	function startDraw()
+	{
+		inPaint = true;
+		getPosition();
+		if (isInCircule())
+		{
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			background();
+			joystick(coord.x, coord.y);
+			Draw();
+		}
+	}
+
+
+	function stopDraw()
+	{
+		inPaint = false;
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		background();
+		joystick(width / 2, height / 3);
+		document.getElementById("x_coordinate").innerText = 0;
+		document.getElementById("y_coordinate").innerText = 0;
+		document.getElementById("speed").innerText = 0;
+		x_rel = 0;
+		y_rel = 0;
+	}
+
+	function Draw(event)
+	{
+
+		if (inPaint)
+		{
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			background();
+			var x, y, speed;
+			var angle = Math.atan2((coord.y - y_orig), (coord.x - x_orig));
+
+			if (isInCircule())
+			{
+				joystick(coord.x, coord.y);
+				x = coord.x;
+				y = coord.y;
+			}
+			else
+			{
+				x = radius * Math.cos(angle) + x_orig;
+				y = radius * Math.sin(angle) + y_orig;
+				joystick(x, y);
+			}
+		
+			getPosition();
+
+			var speed =  Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);
+			var x_relative = Math.round(x - x_orig);
+			var y_relative = Math.round(y_orig - y);
+			document.getElementById("x_coordinate").innerText = x_relative;
+			document.getElementById("y_coordinate").innerText = y_relative ;
+			document.getElementById("speed").innerText = speed;
+			x_rel = x_relative;
+			y_rel = y_relative;
+		}
+	}
+	
+	//Send Interval Timer 100msec
+	setInterval(function()
+	{	
+		
+		if( x_rel!=0 && y_rel!=0)
+		{
+			send( x_rel, y_rel);
+		}
+				
+	},100);
+	
+	
+	async function modeChange()
+	{
+		if(stream.checked==true)
+			mode = bgxMode.stream;
+		else
+			mode = bgxMode.remote;
+			
+		if(connected && device && device.gatt.connected)
+		{
+			const md = new Uint8Array([mode]);
+			await mode_characteristic.writeValue(md);
+		}
+	}
+	
+	async function sendCommand(strCmd)
+	{
+		try
+		{			
+			if(connected && device && device.gatt.connected)
+			{
+				let val_arr = new Uint8Array(strCmd.length+1)
+				var str_arr = strCmd.split('');
+				for (let i = 0; i < strCmd.length; i++) {
+					let val = str_arr[i].charCodeAt(0);
+					val_arr[i] = val;
+				}
+				val_arr[strCmd.length]=0x0d;//return code			
+				await rx_characteristic.writeValue(val_arr);
+			}
+		}
+		catch (error)
+		{
+			console.log(error);
+		}	
+	}
+	
+	
+	function notification(event)
+	{
+		
+		let value = event.target.value;
+		let str = "";
+		for (let i = 0; i < value.byteLength; i++)
+		{
+			str += String.fromCharCode(value.getUint8(i));
+		}
+		consoleStr = consoleStr + str;
+		console.log(str);
+	}
+
+	function disconnected()
+	{
+		connectButton.innerText = '接続';
+		connected = false;
+	}
+
+	//Connect BLE Device 
+	async function connectBLE()
+	{
+        
+		try
+		{
+			console.log("Searching Bluetooth Device");
+			device = await navigator.bluetooth.requestDevice({
+			  filters: [{ services: [service_uuid] }],
+			  optionalServices: [service_uuid]
+			});
+			
+			//console.log("Connecting to GATT Server");			
+			await device.addEventListener('gattserverdisconnected', disconnected);
+			const server = await device.gatt.connect();
+			
+			//console.log("Getting Primary Service");
+			const service = await server.getPrimaryService(service_uuid);
+			
+			//console.log("Getting Mode Characteristic");		
+			mode_characteristic = await service.getCharacteristic(mode_uuid);
+			
+			//console.log("Getting RX Characteristic");		
+			rx_characteristic = await service.getCharacteristic(rx_uuid);
+			
+			//console.log("Getting TX Characteristic");		
+			tx_characteristic = await service.getCharacteristic(tx_uuid);	
+			
+			//console.log('Enable TX Notification');		
+			await tx_characteristic.startNotifications();
+			
+			//console.log('Notification Started');
+			await tx_characteristic.addEventListener('characteristicvaluechanged', notification);
+		
+			const md = new Uint8Array([mode]);
+			await mode_characteristic.writeValue(md);		
+
+			connectButton.innerText = '切断';	
+			connected = true;
+			
+			//Send Button Event
+			console.log('Connected');		
+		}
+		catch (error)
+		{
+			console.log(error);
+			alert(error);	
+			if(device && device.gatt.connected)
+				device.gatt.disconnect();
+			connected = false;
+		}
+		finally
+		{
+
+		}
+	
+	}
+	
+	
+	if (navigator.bluetooth) 
+	{		
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (device)
+			{		
+				connectButton.innerText = '接続';
+				await closed;
+				device = undefined;
+				rx_characteristic = undefined;
+				tx_characteristic = undefined;
+			}
+			else
+			{
+				closed = connectBLE();
+			}
+		});	
+		connectButton.disabled = false;	
+	}	
+	else
+	{
+		alert('お使いのブラウザはWeb Bluetooth APIに対応していません \nEdgeもしくはchromeを使用してください');		
+	}	
+	
+    </script>
+	
+</body>
+
+</html><br>
