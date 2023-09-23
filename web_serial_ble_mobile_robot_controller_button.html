@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Mobile Robot Controller</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h3 { font-size:6pt; text-align:center}
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }
+			tarea{width: 100%;height: 6em;}	
+			button{
+			  width:200px;
+			  justify-content: center;
+			  align-items: center;
+			}
+			.arrow_s_a {
+			  position: relative;
+			  display: inline-block;
+			  padding-left: 320px;
+			  color: #333;
+			  text-decoration: none;
+			  
+			}
+			.arrow_s_a:before {
+			  content: '';
+			  width: 160px;
+			  height: 160px;
+			  background: #333;
+			  border-radius: 50%;
+			  position: absolute;
+			  top: 50%;
+			  left: 0;
+			  margin-top: -36px;
+			}
+			.arrow_s_a:after {
+			  content: '';
+			  width: 0;
+			  height: 0;
+			  border-style: solid;
+			  border-width: 64px 0 64px  98px  ;
+			  border-color: transparent transparent transparent #fff;
+			  position: absolute;
+			  top: 50%;
+			  left: 20px;
+			  margin-top: -20px;
+			  transform: rotate(180deg);
+			}
+
+			.arrow_s_b {
+			  position: relative;
+			  display: inline-block;
+			  padding-left: 160px;
+			  color: #333;
+			  text-decoration: none;
+			}
+			.arrow_s_b:before {
+			  content: '';
+			  width: 160px;
+			  height: 160px;
+			  background: #333;
+			  border-radius: 50%;
+			  position: absolute;
+			  top: 50%;
+			  left: 0;
+			  margin-top: -36px;
+			}
+			.arrow_s_b:after {
+			  content: '';
+			  width: 0;
+			  height: 0;
+			  border-style: solid;
+			  border-width: 64px 0 64px  98px;
+			  border-color: transparent transparent transparent #fff;
+			  position: absolute;
+			  top: 50%;
+			  left: 48px;
+			  margin-top: -16px;
+			}
+			.arrow_s_c {
+			  position: relative;
+			  display: inline-block;
+			  padding-left: 160px;
+			  color: #333;
+			  text-decoration: none;
+			}
+			.arrow_s_c:before {
+			  content: '';
+			  width: 160px;
+			  height: 160px;
+			  background: #333;
+			  border-radius: 50%;
+			  position: absolute;
+			  top: 50%;
+			  left: 0;
+			  margin-top: -36px;
+			}
+			.arrow_s_c:after {
+			  content: '';
+			  width: 0;
+			  height: 0;
+			  border-style: solid;
+			  border-width: 64px 0 64px  98px  ;
+			  border-color: transparent transparent transparent #fff;
+			  position: absolute;
+			  top: 50%;
+			  left: 32px;
+			  margin-top: -1px;
+			  transform: rotate(90deg);
+			}
+			
+			.arrow_s_d {
+			  position: relative;
+			  display: inline-block;
+			  padding-left: 160px;
+			  color: #333;
+			  text-decoration: none;
+			}
+			.arrow_s_d:before {
+			  content: '';
+			  width: 160px;
+			  height: 160px;
+			  background: #333;
+			  border-radius: 50%;
+			  position: absolute;
+			  top: 50%;
+			  left: 0;
+			  margin-top: -36px;
+			}
+			.arrow_s_d:after {
+			  content: '';
+			  width: 0;
+			  height: 0;
+			  border-style: solid;
+			  border-width: 64px 0 64px  98px  ;
+			  border-color: transparent transparent transparent #fff;
+			  position: absolute;
+			  top: 50%;
+			  left: 30px;
+			  margin-top: -34px;
+			  transform: rotate(270deg);
+			}
+			
+	</style>
+</head>
+
+<body  style="font-size: xx-large;">
+    <h1 style="text-align:center">Mobile Robot Controller with Web Serial BLE</h1>
+	<div align="center"><button id="connect-button" type="button" disabled>接続</button></div>
+	<h3>
+		</br>
+		<span>
+		本ツールはブラウザを介して<a href="https://ssci.to/5794">BLE5モジュール変換基板</a>もしくは
+		<a href="https://ssci.to/8649">BLE5モジュール変換基板V2</a>とシリアル通信をするコントローラです</span>
+	</h3>
+	<h3>
+		<span>ブラウザはEdgeもしくはChromeのみ対応しています　「GATT Error: Not paired」が発生する場合は事前にOS側でデバイスを追加してください
+		</span>
+	</h3>
+	<p style="text-align: center;">
+		<a href="javascript:void(0)" class="arrow_s_d" onclick="cmdFwd()"></a>
+		</br>
+		</br>
+		</br>
+		<a href="javascript:void(0)" class="arrow_s_a" onclick="cmdLtn()"></a>
+		<a href="javascript:void(0)" class="arrow_s_b" onclick="cmdRtn()"></a>
+		</br>
+		</br>
+		</br>
+		<a href="javascript:void(0)" class="arrow_s_c" onclick="cmdBwd()"></a>
+    </p>
+
+    <script>
+	/*	
+	 *	Mobile Robot Controller with Web Serial BLE
+	 *  Supported for BGX13 & Lyra P with Wireless Xpress
+	 *	Copyright (c) 2023
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const service_uuid = "331a36f5-2459-45ea-9d95-6142f0c4b307";
+	const rx_uuid = "a9da6040-0823-4995-94ec-9ce41ca28833";//PC->BGX13(Notify OFF)
+	const tx_uuid = "a73e9a10-628f-4494-a099-12efaf72258f";//BGX13->PC(Notify ON)
+	const mode_uuid = "75a9f022-af03-4e41-b4bc-9de90a47d50b";
+	const bgxMode = {
+		stream: 1,
+		local : 2,
+		remote :3
+	};
+	
+	let mode = bgxMode.stream;	
+	let device;
+	let consoleStr = "";
+	let connected = false;
+	let closed;
+	let mode_characteristic;
+	let tx_characteristic;
+	let rx_characteristic;
+		
+	
+	
+	function cmdFwd()
+	{
+		var cmd = "fwd=300";
+		console.log(cmd);
+		if( connected == true )
+		{
+			sendCommand(cmd);
+		}			
+	}
+	
+	
+	function cmdBwd()
+	{
+		var cmd = "bwd=300";
+		console.log(cmd);
+		if( connected == true )
+		{
+			sendCommand(cmd);
+		}			
+	}
+		
+	function cmdLtn()
+	{
+		var cmd = "ltn=300";
+		console.log(cmd);
+		if( connected == true )
+		{
+			sendCommand(cmd);
+		}			
+	}
+	
+	function cmdRtn()
+	{
+		var cmd = "rtn=300";
+		console.log(cmd);
+		if( connected == true )
+		{
+			sendCommand(cmd);
+		}			
+	}
+	
+	
+	async function modeChange()
+	{
+		if(stream.checked==true)
+			mode = bgxMode.stream;
+		else
+			mode = bgxMode.remote;
+			
+		if(connected && device && device.gatt.connected)
+		{
+			const md = new Uint8Array([mode]);
+			await mode_characteristic.writeValue(md);
+		}
+	}
+	
+	async function sendCommand(strCmd)
+	{
+		try
+		{			
+			if(connected && device && device.gatt.connected)
+			{
+				let val_arr = new Uint8Array(strCmd.length+1)
+				var str_arr = strCmd.split('');
+				for (let i = 0; i < strCmd.length; i++) {
+					let val = str_arr[i].charCodeAt(0);
+					val_arr[i] = val;
+				}
+				val_arr[strCmd.length]=0x0d;//return code			
+				await rx_characteristic.writeValue(val_arr);
+			}
+		}
+		catch (error)
+		{
+			console.log(error);
+		}	
+	}
+	
+	
+	function notification(event)
+	{
+		
+		let value = event.target.value;
+		let str = "";
+		for (let i = 0; i < value.byteLength; i++)
+		{
+			str += String.fromCharCode(value.getUint8(i));
+		}
+		consoleStr = consoleStr + str;
+		console.log(str);
+	}
+
+	function disconnected()
+	{
+		connectButton.innerText = '接続';
+		connected = false;
+	}
+
+	//Connect BLE Device 
+	async function connectBLE()
+	{
+        
+		try
+		{
+			console.log("Searching Bluetooth Device");
+			device = await navigator.bluetooth.requestDevice({
+			  filters: [{ services: [service_uuid] }],
+			  optionalServices: [service_uuid]
+			});
+			
+			//console.log("Connecting to GATT Server");			
+			await device.addEventListener('gattserverdisconnected', disconnected);
+			const server = await device.gatt.connect();
+			
+			//console.log("Getting Primary Service");
+			const service = await server.getPrimaryService(service_uuid);
+			
+			//console.log("Getting Mode Characteristic");		
+			mode_characteristic = await service.getCharacteristic(mode_uuid);
+			
+			//console.log("Getting RX Characteristic");		
+			rx_characteristic = await service.getCharacteristic(rx_uuid);
+			
+			//console.log("Getting TX Characteristic");		
+			tx_characteristic = await service.getCharacteristic(tx_uuid);	
+			
+			//console.log('Enable TX Notification');		
+			await tx_characteristic.startNotifications();
+			
+			//console.log('Notification Started');
+			await tx_characteristic.addEventListener('characteristicvaluechanged', notification);
+		
+			const md = new Uint8Array([mode]);
+			await mode_characteristic.writeValue(md);		
+
+			connectButton.innerText = '切断';	
+			connected = true;
+			
+			//Send Button Event
+			console.log('Connected');		
+		}
+		catch (error)
+		{
+			console.log(error);
+			alert(error);	
+			if(device && device.gatt.connected)
+				device.gatt.disconnect();
+			connected = false;
+		}
+		finally
+		{
+
+		}
+	
+	}
+	
+	
+	if (navigator.bluetooth) 
+	{		
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (device)
+			{		
+				connectButton.innerText = '接続';
+				await closed;
+				device = undefined;
+				rx_characteristic = undefined;
+				tx_characteristic = undefined;
+			}
+			else
+			{
+				closed = connectBLE();
+			}
+		});	
+		connectButton.disabled = false;	
+	}	
+	else
+	{
+		alert('お使いのブラウザはWeb Bluetooth APIに対応していません \nEdgeもしくはchromeを使用してください');		
+	}	
+	
+    </script>
+	
+</body>
+
+</html><br>
