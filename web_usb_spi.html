@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Web USB SPI</title>
+		<style>
+				h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+				h2 { font-size:16pt; }
+				h3 { font-size:8pt; }
+				body { font-size:12pt; color:#444444; }
+				footer{ font-size:4pt; }
+				tarea{width: 100%;height: 6em;}			
+		</style>
+	</head>
+	<body>
+		<h1><span>Web USB SPI Tool For MCP2210</span></h1>
+
+	
+		<div>	
+			<p>CS</p>　　
+			<input type="checkbox" id="spi_cs0" name="SPI_CS" value="spi_cs0">
+			<label for="spi_cs0">IO0</label>
+			<input type="checkbox" id="spi_cs1" name="SPI_CS" value="spi_cs1" checked>
+			<label for="spi_cs1">IO1</label>
+			<input type="checkbox" id="spi_cs2" name="SPI_CS" value="spi_cs2">
+			<label for="spi_cs2">IO2</label>
+			<input type="checkbox" id="spi_cs3" name="SPI_CS" value="spi_cs3">
+			<label for="spi_cs3">IO3</label>
+			<input type="checkbox" id="spi_cs4" name="SPI_CS" value="spi_cs4">
+			<label for="spi_cs4">IO4</label>
+			<input type="checkbox" id="spi_cs5" name="SPI_CS" value="spi_cs5">
+			<label for="spi_cs5">IO5</label>
+			<input type="checkbox" id="spi_cs6" name="SPI_CS" value="spi_cs6">
+			<label for="spi_cs6">IO6</label>
+			<input type="checkbox" id="spi_cs7" name="SPI_CS" value="spi_cs7">
+			<label for="spi_cs7">IO7</label>
+			<input type="checkbox" id="spi_cs8" name="SPI_CS" value="spi_cs8">
+			<label for="spi_cs8">IO8</label>	  
+			<p>書込データ</p>　　
+			<input type="text" id="writeData" name="writeData"  style="WIDTH:535px" placeholder="ex) 0x10,0x12...or 16, 18..."></p>	
+			<p>読込データ</p>　　
+			<span id="readData" ></span>	
+		</div>
+	</body>
+	</br>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="transfer-button" type="button" disabled>送受信</button>
+	<button id="clear-button" type="button">クリア</button>	
+	
+	<!-- ************************************************************ -->
+	<div onclick="obj=document.getElementById('gpio_setting').style; obj.display=(obj.display=='none')?'block':'none';">
+		<h1 style="cursor:pointer;">▼ GPIO Settings</h1>
+	</div>
+	<div id="gpio_setting" style="display:none;clear:both;">
+		
+		<fieldset>    
+			<legend>GPIO Mode</legend>	
+			<div>
+			  <p>GPIO0</p>　　
+			  <input type="radio" id="gpio0Mode_io" name="gpio0Mode" value="gpio0Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio0Mode_io">IO</label>
+			  <input type="radio" id="gpio0Mode_cs" name="gpio0Mode" value="gpio0Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio0Mode_cs">CS</label>
+			  <input type="radio" id="gpio0Mode_func" name="gpio0Mode" value="gpio0Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio0Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO1</p>　　
+			  <input type="radio" id="gpio1Mode_io" name="gpio1Mode" value="gpio1Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio1Mode_io">IO</label>
+			  <input type="radio" id="gpio1Mode_cs" name="gpio1Mode" value="gpio1Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio1Mode_cs">CS</label>
+			  <input type="radio" id="gpio1Mode_func" name="gpio1Mode" value="gpio1Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio1Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO2</p>　　
+			  <input type="radio" id="gpio2Mode_io" name="gpio2Mode" value="gpio2Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio2Mode_io">IO</label>
+			  <input type="radio" id="gpio2Mode_cs" name="gpio2Mode" value="gpio2Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio2Mode_cs">CS</label>
+			  <input type="radio" id="gpio2Mode_func" name="gpio2Mode" value="gpio2Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio2Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO3</p>　　
+			  <input type="radio" id="gpio3Mode_io" name="gpio3Mode" value="gpio3Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio3Mode_io">IO</label>
+			  <input type="radio" id="gpio3Mode_cs" name="gpio3Mode" value="gpio3Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio3Mode_cs">CS</label>
+			  <input type="radio" id="gpio3Mode_func" name="gpio3Mode" value="gpio3Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio3Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO4</p>　　
+			  <input type="radio" id="gpio4Mode_io" name="gpio4Mode" value="gpio4Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio4Mode_io">IO</label>
+			  <input type="radio" id="gpio4Mode_cs" name="gpio4Mode" value="gpio4Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio4Mode_cs">CS</label>
+			  <input type="radio" id="gpio4Mode_func" name="gpio4Mode" value="gpio4Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio4Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO5</p>　　
+			  <input type="radio" id="gpio5Mode_io" name="gpio5Mode" value="gpio5Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio5Mode_io">IO</label>
+			  <input type="radio" id="gpio5Mode_cs" name="gpio5Mode" value="gpio5Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio5Mode_cs">CS</label>
+			  <input type="radio" id="gpio5Mode_func" name="gpio5Mode" value="gpio5Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio5Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO6</p>　　
+			  <input type="radio" id="gpio6Mode_io" name="gpio6Mode" value="gpio6Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio6Mode_io">IO</label>
+			  <input type="radio" id="gpio6Mode_cs" name="gpio6Mode" value="gpio6Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio6Mode_cs">CS</label>
+			  <input type="radio" id="gpio6Mode_func" name="gpio6Mode" value="gpio6Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio6Mode_func">Func</label>
+			</div>	
+			<div>
+			　　<p>GPIO7</p>　　
+			  <input type="radio" id="gpio7Mode_io" name="gpio7Mode" value="gpio7Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio7Mode_io">IO</label>
+			  <input type="radio" id="gpio7Mode_cs" name="gpio7Mode" value="gpio7Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio7Mode_cs">CS</label>
+			  <input type="radio" id="gpio7Mode_func" name="gpio7Mode" value="gpio7Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio7Mode_func">Func</label>
+			</div>
+			<div>
+			　　<p>GPIO8</p>　　
+			  <input type="radio" id="gpio8Mode_io" name="gpio8Mode" value="gpio8Mode_io" checked onchange="gpioModeChange();">
+			  <label for="gpio8Mode_io">IO</label>
+			  <input type="radio" id="gpio8Mode_cs" name="gpio8Mode" value="gpio8Mode_cs" onchange="gpioModeChange();">
+			  <label for="gpio8Mode_cs">CS</label>
+			  <input type="radio" id="gpio8Mode_func" name="gpio8Mode" value="gpio8Mode_func" onchange="gpioModeChange();">
+			  <label for="gpio8Mode_func">Func</label>
+			</div>	
+		</fieldset>
+		
+		<fieldset>    
+			<legend>GPIO Input/Output</legend>	
+			<div>
+			　　<p>GPIO0</p>　　
+			  <input type="radio" id="input0" name="gpio0" value="input0" checked onchange="gpioDirChange();">
+			  <label for="input0">入力</label>
+			  <input type="radio" id="output0" name="gpio0" value="output0" onchange="gpioDirChange();">
+			  <label for="output0">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO1</p>　　
+			  <input type="radio" id="input1" name="gpio1" value="input1" checked onchange="gpioDirChange();">
+			  <label for="input1">入力</label>
+			  <input type="radio" id="output1" name="gpio1" value="output1" onchange="gpioDirChange();">
+			  <label for="output1">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO2</p>　　
+			  <input type="radio" id="input2" name="gpio2" value="input2" checked onchange="gpioDirChange();">
+			  <label for="input2">入力</label>
+			  <input type="radio" id="output2" name="gpio2" value="output2" onchange="gpioDirChange();">
+			  <label for="output2">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO3</p>　　
+			  <input type="radio" id="input3" name="gpio3" value="input3" checked onchange="gpioDirChange();">
+			  <label for="input3">入力</label>
+			  <input type="radio" id="output3" name="gpio3" value="output3" onchange="gpioDirChange();">
+			  <label for="output3">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO4</p>　　
+			  <input type="radio" id="input4" name="gpio4" value="input4" checked onchange="gpioDirChange();">
+			  <label for="input4">入力</label>
+			  <input type="radio" id="output4" name="gpio4" value="output4" onchange="gpioDirChange();">
+			  <label for="output4">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO5</p>　　
+			  <input type="radio" id="input5" name="gpio5" value="input5" checked onchange="gpioDirChange();">
+			  <label for="input5">入力</label>
+			  <input type="radio" id="output5" name="gpio5" value="output5" onchange="gpioDirChange();">
+			  <label for="output5">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO6</p>　　
+			  <input type="radio" id="input6" name="gpio6" value="input6" checked onchange="gpioDirChange();">
+			  <label for="input6">入力</label>
+			  <input type="radio" id="output6" name="gpio6" value="output6" onchange="gpioDirChange();">
+			  <label for="output6">出力</label>
+			</div>	
+			<div>
+			　　<p>GPIO7</p>　　
+			  <input type="radio" id="input7" name="gpio7" value="input7" checked onchange="gpioDirChange();">
+			  <label for="input7">入力</label>
+			  <input type="radio" id="output7" name="gpio7" value="output7" onchange="gpioDirChange();">
+			  <label for="output7">出力</label>
+			</div>
+			<div>
+			　　<p>GPIO8</p>　　
+			  <input type="radio" id="input8" name="gpio8" value="input8" checked onchange="gpioDirChange();">
+			  <label for="input8">入力</label>
+			  <input type="radio" id="output8" name="gpio8" value="output8" onchange="gpioDirChange();">
+			  <label for="output8">出力</label>
+			</div>	
+		</fieldset>
+
+		<!-- ************************************************************ -->
+		<fieldset>    
+			<legend>GPIO ON/OFF</legend>	
+			<div>
+			  <p>GPIO0</p>　　
+			  <input type="radio" id="off0" name="sw0" value="off0" checked  onchange="gpioValChange();">
+			  <label for="off0">OFF</label>
+			  <input type="radio" id="on0" name="sw0" value="on0"  onchange="gpioValChange();">
+			  <label for="on0">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO1</p>　　
+			  <input type="radio" id="off1" name="sw1" value="off1" checked  onchange="gpioValChange();">
+			  <label for="off1">OFF</label>
+			  <input type="radio" id="on1" name="sw1" value="on1"  onchange="gpioValChange();">
+			  <label for="on1">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO2</p>　　
+			  <input type="radio" id="off2" name="sw2" value="off2" checked  onchange="gpioValChange();">
+			  <label for="off2">OFF</label>
+			  <input type="radio" id="on2" name="sw2" value="on2"  onchange="gpioValChange();">
+			  <label for="on2">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO3</p>　　
+			  <input type="radio" id="off3" name="sw3" value="off3" checked  onchange="gpioValChange();">
+			  <label for="off3">OFF</label>
+			  <input type="radio" id="on3" name="sw3" value="on3"  onchange="gpioValChange();">
+			  <label for="on3">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO4</p>　　
+			  <input type="radio" id="off4" name="sw4" value="off4" checked  onchange="gpioValChange();">
+			  <label for="off4">OFF</label>
+			  <input type="radio" id="on4" name="sw4" value="on4"  onchange="gpioValChange();">
+			  <label for="on4">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO5</p>　　
+			  <input type="radio" id="off5" name="sw5" value="off5" checked  onchange="gpioValChange();">
+			  <label for="off5">OFF</label>
+			  <input type="radio" id="on5" name="sw5" value="on5"  onchange="gpioValChange();">
+			  <label for="on5">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO6</p>　　
+			  <input type="radio" id="off6" name="sw6" value="off6" checked  onchange="gpioValChange();">
+			  <label for="off6">OFF</label>
+			  <input type="radio" id="on6" name="sw6" value="on6"  onchange="gpioValChange();">
+			  <label for="on6">ON</label>
+			</div>	
+			<div>
+			　　<p>GPIO7</p>　　
+			  <input type="radio" id="off7" name="sw7" value="off7" checked  onchange="gpioValChange();">
+			  <label for="off7">OFF</label>
+			  <input type="radio" id="on7" name="sw7" value="on7"  onchange="gpioValChange();">
+			  <label for="on7">ON</label>
+			</div>
+			<div>
+			　　<p>GPIO8</p>　　
+			  <input type="radio" id="off8" name="sw8" value="off8" checked  onchange="gpioValChange();">
+			  <label for="off8">OFF</label>
+			  <input type="radio" id="on8" name="sw8" value="on8"  onchange="gpioValChange();">
+			  <label for="on8">ON</label>
+			</div>		
+		</fieldset>
+	</div>
+	<!-- ************************************************************ -->
+	<div onclick="obj=document.getElementById('spi_setting').style; obj.display=(obj.display=='none')?'block':'none';">
+		<h1 style="cursor:pointer;">▼ SPI Settings</h1>
+	</div>
+	<div id="spi_setting" style="display:none;clear:both;">
+		<p >SPI Mode</p>　　
+		<input type='text' id="spi_mode" name='spi_mode' style="WIDTH:135px">
+		<p >SPI CLK</p>　　
+		<input type='text' id="spi_clk" name='spi_clk' style="WIDTH:135px"> kHz	
+		<p >One Transaction Bytes</p>　　
+		<input type='text' id="spi_bytes" name='spi_bytes' style="WIDTH:135px"> Byte(s)
+		<p >CS to Data Delay</p>　　
+		<input type='text' id="spi_cs_data_delay" name='spi_cs_data_delay' style="WIDTH:135px"> usec
+		<p >Data to Data Delay</p>　　
+		<input type='text' id="spi_data_data_delay" name='spi_data_data_delay' style="WIDTH:135px"> usec
+		<p >Data to CS Delay</p>　　
+		<input type='text' id="spi_data_cs_delay" name='spi_data_cs_delay' style="WIDTH:135px"> usec
+		</br>
+		</br>
+		<button id="get_spi_setting" type="button" disabled>読込</button>
+		<button id="set_spi_setting" type="button" disabled>保存</button>	
+	</div>
+		
+	
+	
+	<h3>
+		<span>
+		本ツールは<a href="*">USB SPI変換基板</a>とブラウザを介してシリアル通信をテストするツールです
+		</span>
+	</h3>
+	<h3><span>各設定はRAMに保存されます</span></h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2023 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	Web USB SPI For MCP2210
+	 *	Copyright (c) 2023
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const transferButton = document.getElementById ('transfer-button');
+	const clearButton = document.getElementById ('clear-button');
+	const getSpiButton = document.getElementById ('get_spi_setting');
+	const setSpiButton = document.getElementById ('set_spi_setting');
+	const wDataText = document.getElementById ('writeData');
+	const rDataText = document.getElementById ('readData');
+	
+
+	const vendor_id 			= 0x04D8;//Microchip Technology Inc.
+	const product_id 			= 0x00DE;//MCP2210 USB-SPI
+	
+	const CMD_LENGTH			= 0x40;//64
+	const CMD_ACCEPTED			= 0x00;
+	const MAX_TRANSFER_SIZE		= 0x3C;//60
+	
+	const CMD_GET_GPIO_SETTING	= 0x20;
+	const CMD_SET_GPIO_SETTING	= 0x21;
+	const CMD_SET_GPIO_VAL		= 0x30;
+	const CMD_GET_GPIO_VAL		= 0x31;
+	const CMD_SET_GPIO_DIR		= 0x32;
+	const CMD_GET_GPIO_DIR		= 0x33;
+	
+	const CMD_SET_SPI_SETTING	= 0x40;
+	const CMD_GET_SPI_SETTING	= 0x41;
+	const CMD_SPI_TRANSFER		= 0x42;
+
+	
+	const ioMode = {
+		io: 0,
+		cs : 1,
+		func :2
+	};
+	
+	const spiMode = {
+		mode0 : 0,
+		mode1 : 1,
+		mode2 : 2,
+		mode3 : 3		
+	};
+	
+	let device;
+	let connected = false;
+	let wdataArry = [];
+	let rdataArry = [];
+	let wdataOffset = 0;
+	let rdataOffset = 0;
+	let writeDataLen = 0;
+	
+	
+	//Connect USB HID Device 
+	async function connectUSB()
+	{
+        
+		try
+		{
+		
+			
+			[device] = await navigator.hid.requestDevice(
+			  { filters: [{'vendorId': vendor_id, 'productId': product_id}] }
+			)
+		
+			console.log(device);
+						
+			const resOpen = await device.open();
+			await device.addEventListener("inputreport", handleInputReport);
+
+			console.log(device.productName+" is Connected");
+			connectButton.innerText = '切断';
+			connected = true;
+			transferButton.disabled = false;
+			getSpiButton.disabled = false;
+			setSpiButton.disabled = false;
+
+			
+			//Get GPIO Mode Settings
+			Sleep(30);
+			sendCommand(new Uint8Array([CMD_GET_GPIO_SETTING]));
+			
+			
+			//Get GPIO I/O Settings
+			Sleep(1);
+			sendCommand(new Uint8Array([CMD_GET_GPIO_DIR]));
+			
+			
+			//Get GPIO ON/OFF Settings
+			Sleep(1);
+			sendCommand(new Uint8Array([CMD_GET_GPIO_VAL]));
+			
+			
+			//Get SPI Settings
+			Sleep(1);
+			sendCommand(new Uint8Array([CMD_GET_SPI_SETTING]));
+			
+									
+
+
+		}
+		catch (error)
+		{
+			console.log(error);
+			device.close();
+			connected = false;
+			transferButton.disabled = true;
+			getSpiButton.disabled = true;
+			setSpiButton.disabled = true;
+		}
+		finally
+		{
+
+		}
+	
+	}
+	
+	//Clear Response
+	clearButton.addEventListener('click', (event) =>
+	{
+		rDataText.innerText="";
+	});
+
+	// TransferButton 
+	transferButton.addEventListener('click', (event) =>
+	{
+		if(wDataText.value!="")
+		{
+			wdataArry=[];
+			rdataArry=[];
+			wdataOffset = 0;
+			rdataOffset =0;
+
+			const itemData = wDataText.value.split(',');
+			writeDataLen = itemData.length;
+			for(var i=0; i<itemData.length; i++)
+			{
+				if(itemData[i][1]=="x")
+					wdataArry.push(parseInt(itemData[i], 16));
+				else
+					wdataArry.push(parseInt(itemData[i],10));	
+			}
+
+			if(writeDataLen<Number(document.getElementById("spi_bytes").value))
+			{
+				alert('Write Data Size is smaller than One Transaction Bytes! \nCheck One Transaction Bytes in SPI Settings.');	
+				return;
+			}	
+			spiTransfer();
+			//console.log(wdataArry);
+			
+		}	
+	});
+
+	getSpiButton.addEventListener('click', (event) =>
+	{
+		sendCommand(new Uint8Array([CMD_GET_SPI_SETTING]));
+	});
+
+	setSpiButton.addEventListener('click', (event) =>
+	{
+		spiSettingChange();
+	});
+
+
+	async function spiTransfer()
+	{
+		let i = 0;
+		let sendArry = new Uint8Array(CMD_LENGTH);
+		sendArry[0] = CMD_SPI_TRANSFER;
+		sendArry[1] = writeDataLen;
+
+		for( i=0; i<MAX_TRANSFER_SIZE; i++ )
+			sendArry[i+4] = wdataArry[i+wdataOffset];
+
+		//console.log(sendArry);
+		if(connected)
+			await device.sendReport(0, sendArry);
+	}
+	
+	async function sendCommand(cmd)
+	{
+		let sendArry = new Uint8Array(CMD_LENGTH);
+		sendArry.set(cmd);
+		//console.log(sendArry);	
+		if(connected)
+			await device.sendReport(0, sendArry);
+	}
+	
+	
+	
+	async function gpioModeChange()
+	{
+		let cmdArry = new Uint8Array(CMD_LENGTH);
+		cmdArry[0] = CMD_SET_GPIO_SETTING;
+
+		// IO0 
+		if( gpio0Mode_io.checked == true )
+			cmdArry[4] = ioMode.io;
+		else if( gpio0Mode_cs.checked == true )
+			cmdArry[4] = ioMode.cs;
+		else 
+			cmdArry[4] = ioMode.func;
+
+		// IO1
+		if( gpio1Mode_io.checked == true )
+			cmdArry[5] = ioMode.io;
+		else if( gpio1Mode_cs.checked == true )
+			cmdArry[5] = ioMode.cs;
+		else 
+			cmdArry[5] = ioMode.func;
+		
+		// IO2
+		if( gpio2Mode_io.checked == true )
+			cmdArry[6] = ioMode.io;
+		else if( gpio2Mode_cs.checked == true )
+			cmdArry[6] = ioMode.cs;
+		else 
+			cmdArry[6] = ioMode.func;
+
+		// IO3
+		if( gpio3Mode_io.checked == true )
+			cmdArry[7] = ioMode.io;
+		else if( gpio3Mode_cs.checked == true )
+			cmdArry[7] = ioMode.cs;
+		else 
+			cmdArry[7] = ioMode.func;
+
+		// IO4
+		if( gpio4Mode_io.checked == true )
+			cmdArry[8] = ioMode.io;
+		else if( gpio4Mode_cs.checked == true )
+			cmdArry[8] = ioMode.cs;
+		else 
+			cmdArry[8] = ioMode.func;	
+
+		// IO5
+		if( gpio5Mode_io.checked == true )
+			cmdArry[9] = ioMode.io;
+		else if( gpio5Mode_cs.checked == true )
+			cmdArry[9] = ioMode.cs;
+		else 
+			cmdArry[9] = ioMode.func;	
+
+		// IO6
+		if( gpio6Mode_io.checked == true )
+			cmdArry[10] = ioMode.io;
+		else if( gpio6Mode_cs.checked == true )
+			cmdArry[10] = ioMode.cs;
+		else 
+			cmdArry[10] = ioMode.func;	
+	
+		// IO7
+		if( gpio7Mode_io.checked == true )
+			cmdArry[11] = ioMode.io;
+		else if( gpio7Mode_cs.checked == true )
+			cmdArry[11] = ioMode.cs;
+		else 
+			cmdArry[11] = ioMode.func;	
+
+		// IO8
+		if( gpio8Mode_io.checked == true )
+			cmdArry[12] = ioMode.io;
+		else if( gpio8Mode_cs.checked == true )
+			cmdArry[12] = ioMode.cs;
+		else 
+			cmdArry[12] = ioMode.func;	
+
+		updateWithGpioMode();
+
+		if(connected)
+			await device.sendReport(0, cmdArry);
+		//console.log(cmdArry);	
+		
+	}
+
+	async function gpioDirChange()
+	{
+		let cmdArry = new Uint8Array(CMD_LENGTH);
+		cmdArry[0] = CMD_SET_GPIO_DIR;
+
+		cmdArry[4] =	 ((input7.checked == true)?1:0)<<7
+						|((input6.checked == true)?1:0)<<6
+						|((input5.checked == true)?1:0)<<5
+						|((input4.checked == true)?1:0)<<4
+						|((input3.checked == true)?1:0)<<3
+						|((input2.checked == true)?1:0)<<2
+						|((input1.checked == true)?1:0)<<1
+						|((input0.checked == true)?1:0);
+		cmdArry[5] =	 ((input8.checked == true)?1:0);
+
+		updateWithInputOutput();
+
+		if(connected)
+			await device.sendReport(0, cmdArry);	
+		//console.log(cmdArry);
+	}
+
+	async function gpioValChange()
+	{
+		let cmdArry = new Uint8Array(CMD_LENGTH);
+		cmdArry[0] = CMD_SET_GPIO_VAL;
+
+		cmdArry[4] =	 ((on7.checked == true)?1:0)<<7
+						|((on6.checked == true)?1:0)<<6
+						|((on5.checked == true)?1:0)<<5
+						|((on4.checked == true)?1:0)<<4
+						|((on3.checked == true)?1:0)<<3
+						|((on2.checked == true)?1:0)<<2
+						|((on1.checked == true)?1:0)<<1
+						|((on0.checked == true)?1:0)<<0;
+		cmdArry[5] =	 ((on8.checked == true)?1:0);
+
+		if(connected)
+			await device.sendReport(0, cmdArry);	
+		//console.log(cmdArry);
+	}
+
+	async function spiSettingChange()
+	{
+		let cmdArry = new Uint8Array(CMD_LENGTH);
+		cmdArry[0] = CMD_SET_SPI_SETTING;
+		
+		// Set Clk
+		let clk = Number(document.getElementById("spi_clk").value)*1000;
+				
+		cmdArry[4] = (clk>>0)&0xFF;
+		cmdArry[5] = (clk>>8)&0xFF;
+		cmdArry[6] = (clk>>16)&0xFF;
+		cmdArry[7] = (clk>>24)&0xFF;
+
+		// Set CS
+		cmdArry[8] = 0xFF;
+		cmdArry[9] = 0xFF;
+
+		cmdArry[10] =	 ((spi_cs7.checked == true)?0:1)<<7
+						|((spi_cs6.checked == true)?0:1)<<6
+						|((spi_cs5.checked == true)?0:1)<<5
+						|((spi_cs4.checked == true)?0:1)<<4
+						|((spi_cs3.checked == true)?0:1)<<3
+						|((spi_cs2.checked == true)?0:1)<<2
+						|((spi_cs1.checked == true)?0:1)<<1
+						|((spi_cs0.checked == true)?0:1)<<0;
+		cmdArry[11] =	 ((spi_cs8.checked == true)?0:1)<<0;
+
+		// Set CS to Data Delay
+		let csDataDelay = Number(document.getElementById("spi_cs_data_delay").value);
+		cmdArry[12] = (csDataDelay>>0)&0xFF;
+		cmdArry[13] = (csDataDelay>>8)&0xFF;
+
+		// Set Data to Data Delay
+		let dataDataDelay = Number(document.getElementById("spi_data_data_delay").value);
+		cmdArry[16] = (csDataDelay>>0)&0xFF;
+		cmdArry[17] = (csDataDelay>>8)&0xFF;
+
+		// Set Data to CS Delay
+		let dataCsDelay = Number(document.getElementById("spi_data_cs_delay").value);
+		cmdArry[14] = (csDataDelay>>0)&0xFF;
+		cmdArry[15] = (csDataDelay>>8)&0xFF;
+		
+		// Set One Transaction Bytes
+		let bytes = Number(document.getElementById("spi_bytes").value);
+		cmdArry[18] = (bytes>>0)&0xFF;
+		cmdArry[19] = (bytes>>8)&0xFF;
+
+		// Set SPI Mode		
+		cmdArry[20] = Number(document.getElementById("spi_mode").value)%4;		
+		
+		if(connected)
+			await device.sendReport(0, cmdArry);
+		//console.log(cmdArry);	
+
+	}
+
+
+	
+    function handleInputReport(e)
+	{
+		let received = new Uint8Array(e.data.buffer);
+		//console.log(received);
+		checkResponse(received);	  
+    }
+
+
+	function checkResponse(res)
+	{
+		
+		if( res[0] == CMD_GET_GPIO_SETTING )
+		{
+			let io = res.slice(4, 13);
+			setIoMode(io);
+		}
+		else if( res[0] == CMD_GET_GPIO_DIR )
+		{
+			let io = res.slice(4, 6);
+			setIoDir(io);
+		}
+		else if( res[0] == CMD_GET_GPIO_VAL )
+		{
+			let io = res.slice(4, 6);
+			setIoVal(io);
+		}
+		else if( res[0] == CMD_GET_SPI_SETTING )
+		{	
+			let io = res.slice(4, 21);
+			setSpiSetting(io);
+		}
+		else if( res[0] == CMD_SPI_TRANSFER )
+		{
+			let io = res.slice(2, CMD_LENGTH);
+			if( res[1] == CMD_ACCEPTED )
+				setSpiTransfer(io);
+			else
+				alert('SPI Transfer ERR\nErr Code:0x' + res[1].toString(16).toUpperCase());	
+		}
+	
+	}
+
+	function setSpiTransfer(io)
+	{
+		let rlen = io[0];
+		let status = io[1];
+		let i = 0;
+
+		for( i=0; i<rlen; i++)
+		{
+			rdataArry[rdataOffset] = " 0x"+io[i+2].toString(16).toUpperCase();
+			rdataOffset++;
+		}
+		if(rlen>0)
+			rDataText.innerText = rdataArry;
+
+
+		if(status == 0x20)// SPI transfer started -> check response
+		{
+			sendCommand(new Uint8Array([CMD_SPI_TRANSFER]));
+		}
+		else if(status == 0x30) //SPI transfer not finished; received data available
+		{
+			wdataOffset = wdataOffset + MAX_TRANSFER_SIZE;
+			spiTransfer();
+		}
+
+
+	}
+
+	
+	function setSpiSetting(io)
+	{
+		console.log(io);
+		// Set Bit Rate
+		let bitRateArry = io.slice(0, 4);
+		let bitRate = bitRateArry[0]+bitRateArry[1]*0x100+bitRateArry[2]*0x10000+bitRateArry[3]*0x1000000;
+		document.getElementById("spi_clk").value = bitRate/1000;
+
+		// Set CS
+		let csVal = io.slice(6, 8);
+		spi_cs0.checked  = ( ((csVal[0]>>0)&0x01) == 0x00 && gpio0Mode_cs.checked == true)?true:false;
+		spi_cs1.checked  = ( ((csVal[0]>>1)&0x01) == 0x00 && gpio1Mode_cs.checked == true)?true:false;
+		spi_cs2.checked  = ( ((csVal[0]>>2)&0x01) == 0x00 && gpio2Mode_cs.checked == true)?true:false;
+		spi_cs3.checked  = ( ((csVal[0]>>3)&0x01) == 0x00 && gpio3Mode_cs.checked == true)?true:false;
+		spi_cs4.checked  = ( ((csVal[0]>>4)&0x01) == 0x00 && gpio4Mode_cs.checked == true)?true:false;
+		spi_cs5.checked  = ( ((csVal[0]>>5)&0x01) == 0x00 && gpio5Mode_cs.checked == true)?true:false;
+		spi_cs6.checked  = ( ((csVal[0]>>6)&0x01) == 0x00 && gpio6Mode_cs.checked == true)?true:false;
+		spi_cs7.checked  = ( ((csVal[0]>>7)&0x01) == 0x00 && gpio7Mode_cs.checked == true)?true:false;
+		spi_cs8.checked  = ( ((csVal[1]>>0)&0x01) == 0x00 && gpio8Mode_cs.checked == true)?true:false;
+
+		// Cs to Data Delay
+		let csDataDelayArry = io.slice(8, 10);
+		let csDataDelay = csDataDelayArry[0]+csDataDelayArry[1]*0x100;
+		document.getElementById("spi_cs_data_delay").value = csDataDelay*100;
+
+		// Data to Data Delay
+		let dataDataDelayArry = io.slice(12, 14);
+		let dataDataDelay = dataDataDelayArry[0]+dataDataDelayArry[1]*0x100;
+		document.getElementById("spi_data_data_delay").value = dataDataDelay*100;
+
+		// Data to CS Delay
+		let dataCsDelayArry = io.slice(10, 12);
+		let dataCsDelay = dataCsDelayArry[0]+dataCsDelayArry[1]*0x100;
+		document.getElementById("spi_data_cs_delay").value = dataCsDelay*100;
+
+		// SPI Transaction Bytes
+		let bytesArry = io.slice(14, 16);
+		document.getElementById("spi_bytes").value = bytesArry[0]+bytesArry[1]*256;		
+
+		// SPI Mode
+		document.getElementById("spi_mode").value = io[16];
+
+
+	}
+
+	
+	function setIoMode(io)
+	{
+		//IO0
+		if( io[0] == ioMode.io )
+			gpio0Mode_io.checked = true;
+		else if( io[0] == ioMode.cs )
+			gpio0Mode_cs.checked = true;
+		else 
+			gpio0Mode_func.checked = true;
+		
+		//IO1
+		if( io[1] == ioMode.io )
+			gpio1Mode_io.checked = true;
+		else if( io[1] == ioMode.cs )
+			gpio1Mode_cs.checked = true;
+		else 
+			gpio1Mode_func.checked = true;
+		
+		//IO2
+		if( io[2] == ioMode.io )
+			gpio2Mode_io.checked = true;
+		else if( io[2] == ioMode.cs )
+			gpio2Mode_cs.checked = true;
+		else 
+			gpio2Mode_func.checked = true;
+			
+		//IO3
+		if( io[3] == ioMode.io )
+			gpio3Mode_io.checked = true;
+		else if( io[3] == ioMode.cs )
+			gpio3Mode_cs.checked = true;
+		else 
+			gpio3Mode_func.checked = true;
+		
+		//IO4
+		if( io[4] == ioMode.io )
+			gpio4Mode_io.checked = true;
+		else if( io[4] == ioMode.cs )
+			gpio4Mode_cs.checked = true;
+		else 
+			gpio4Mode_func.checked = true;
+		
+		//IO5
+		if( io[5] == ioMode.io )
+			gpio5Mode_io.checked = true;
+		else if( io[5] == ioMode.cs )
+			gpio5Mode_cs.checked = true;
+		else 
+			gpio5Mode_func.checked = true;
+			
+		//IO6
+		if( io[6] == ioMode.io )
+			gpio6Mode_io.checked = true;
+		else if( io[6] == ioMode.cs )
+			gpio6Mode_cs.checked = true;
+		else 
+			gpio6Mode_func.checked = true;
+		
+		//IO7
+		if( io[7] == ioMode.io )
+			gpio7Mode_io.checked = true;
+		else if( io[7] == ioMode.cs )
+			gpio7Mode_cs.checked = true;
+		else 
+			gpio7Mode_func.checked = true;
+		
+		//IO8
+		if( io[8] == ioMode.io )
+			gpio8Mode_io.checked = true;
+		else if( io[8] == ioMode.cs )
+			gpio8Mode_cs.checked = true;
+		else 
+			gpio8Mode_func.checked = true;
+		
+		updateWithGpioMode();
+	}
+	
+	function setIoDir(io)
+	{
+		console.log(io);
+		//IO0
+		if( ((io[0]>>0)&0x01) == 0x01 )
+			input0.checked = true;		
+		else
+			output0.checked = true;
+		
+			
+		//IO1
+		if( ((io[0]>>1)&0x01) == 0x01)
+			input1.checked = true;		
+		else
+			output1.checked = true;		
+			
+		//IO2
+		if( ((io[0]>>2)&0x01) == 0x01)
+			input2.checked = true;
+		else
+			output2.checked = true;
+		
+
+		//IO3
+		if( ((io[0]>>3)&0x01) == 0x01)
+			input3.checked = true;			
+		else
+			output3.checked = true;
+		
+			
+		//IO4
+		if( ((io[0]>>4)&0x01) == 0x01)
+			input4.checked = true;		
+		else
+			output4.checked = true;		
+		
+		//IO5
+		if( ((io[0]>>5)&0x01) == 0x01)
+			input5.checked = true;		
+		else
+			output5.checked = true;	
+		
+		//IO6
+		if( ((io[0]>>6)&0x01) == 0x01)
+			input6.checked = true;
+
+		else
+			output6.checked = true;
+			
+		//IO7
+		if( ((io[0]>>7)&0x01) == 0x01)
+			input7.checked = true;
+		else
+			output7.checked = true;	
+
+			
+		//IO8
+		if( ((io[1]>>0)&0x01) == 0x01)
+			input8.checked = true;
+		else
+			output8.checked = true;	
+
+		updateWithInputOutput();
+			
+	}
+	
+	function setIoVal(io)
+	{
+		//IO0
+		if( ((io[0]>>0)&0x01) == 0x01 )
+			on0.checked = true;
+		else
+			off0.checked = true;
+			
+		//IO1
+		if( ((io[0]>>1)&0x01) == 0x01)
+			on1.checked = true;
+		else
+			off1.checked = true;
+			
+		//IO2
+		if( ((io[0]>>2)&0x01) == 0x01)
+			on2.checked = true;
+		else
+			off2.checked = true;
+		
+		//IO3
+		if( ((io[0]>>3)&0x01) == 0x01)
+			on3.checked = true;
+		else
+			off3.checked = true;
+			
+		//IO4
+		if( ((io[0]>>4)&0x01) == 0x01)
+			on4.checked = true;
+		else
+			off4.checked = true;
+		
+		//IO5
+		if( ((io[0]>>5)&0x01) == 0x01)
+			on5.checked = true;
+		else
+			off5.checked = true;
+		
+		//IO6
+		if( ((io[0]>>6)&0x01) == 0x01)
+			on6.checked = true;
+		else
+			off6.checked = true;
+			
+		//IO7
+		if( ((io[0]>>7)&0x01) == 0x01)
+			on7.checked = true;
+		else
+			off7.checked = true;	
+			
+		//IO8
+		if( ((io[1]>>0)&0x01) == 0x01)
+			on8.checked = true;
+		else
+			off8.checked = true;	
+	
+	}
+
+	function updateWithGpioMode()
+	{
+		//Update Radio Button
+		// IO0
+		if(gpio0Mode_io.checked == true )
+		{
+			input0.disabled = false;
+			output0.disabled = false;
+		}
+		else
+		{
+			input0.disabled = true;
+			output0.disabled = true;
+		}
+		// IO1
+		if(gpio1Mode_io.checked == true )
+		{
+			input1.disabled = false;
+			output1.disabled = false;
+		}
+		else
+		{
+			input1.disabled = true;
+			output1.disabled = true;
+		}
+		// IO2
+		if(gpio2Mode_io.checked == true )
+		{
+			input2.disabled = false;
+			output2.disabled = false;
+		}
+		else
+		{
+			input2.disabled = true;
+			output2.disabled = true;
+		}
+		// IO3
+		if(gpio3Mode_io.checked == true )
+		{
+			input3.disabled = false;
+			output3.disabled = false;
+		}
+		else
+		{
+			input3.disabled = true;
+			output3.disabled = true;
+		}
+		// IO4
+		if(gpio4Mode_io.checked == true )
+		{
+			input4.disabled = false;
+			output4.disabled = false;
+		}
+		else
+		{
+			input4.disabled = true;
+			output4.disabled = true;
+		}
+		// IO5
+		if(gpio5Mode_io.checked == true )
+		{
+			input5.disabled = false;
+			output5.disabled = false;
+		}
+		else
+		{
+			input5.disabled = true;
+			output5.disabled = true;
+		}
+		// IO6
+		if(gpio6Mode_io.checked == true )
+		{
+			input6.disabled = false;
+			output6.disabled = false;
+		}
+		else
+		{
+			input6.disabled = true;
+			output6.disabled = true;
+		}
+		// IO7
+		if(gpio7Mode_io.checked == true )
+		{
+			input7.disabled = false;
+			output7.disabled = false;
+		}
+		else
+		{
+			input7.disabled = true;
+			output7.disabled = true;
+		}
+		// IO8
+		if(gpio8Mode_io.checked == true )
+		{
+			input8.disabled = false;
+			output8.disabled = false;
+		}
+		else
+		{
+			input8.disabled = true;
+			output8.disabled = true;
+		}
+
+	}
+
+	function updateWithInputOutput()
+	{
+		//IO0
+		if( output0.checked == true && output0.disabled == false )
+		{
+			off0.disabled = false;
+			on0.disabled = false;
+		}
+		else
+		{
+			off0.disabled = true;
+			on0.disabled = true;
+		}
+
+		//IO1
+		if( output1.checked == true && output1.disabled == false )
+		{
+			off1.disabled = false;
+			on1.disabled = false;
+		}
+		else
+		{
+			off1.disabled = true;
+			on1.disabled = true;
+		}
+
+		//IO2
+		if( output2.checked == true &&  output2.disabled == false )
+		{
+			off2.disabled = false;
+			on2.disabled = false;
+		}
+		else
+		{
+			off2.disabled = true;
+			on2.disabled = true;
+		}
+
+		//IO3
+		if( output3.checked == true && output3.disabled == false )
+		{
+			off3.disabled = false;
+			on3.disabled = false;
+		}
+		else
+		{
+			off3.disabled = true;
+			on3.disabled = true;
+		}
+
+		//IO4
+		if( output4.checked == true && output4.disabled == false )
+		{
+			off4.disabled = false;
+			on4.disabled = false;
+		}
+		else
+		{
+			off4.disabled = true;
+			on4.disabled = true;
+		}
+
+		//IO5
+		if( output5.checked == true &&  output5.disabled == false )
+		{
+			off5.disabled = false;
+			on5.disabled = false;
+		}
+		else
+		{
+			off5.disabled = true;
+			on5.disabled = true;
+		}	
+
+		//IO6
+		if( output6.checked == true && output6.disabled == false )
+		{
+			off6.disabled = false;
+			on6.disabled = false;
+		}
+		else
+		{
+			off6.disabled = true;
+			on6.disabled = true;
+		}	
+
+		//IO7
+		if( output7.checked == true && output7.disabled == false )
+		{
+			off7.disabled = false;
+			on7.disabled = false;
+		}
+		else
+		{
+			off7.disabled = true;
+			on7.disabled = true;
+		}	
+		//IO8
+		if( output8.checked == true && output8.disabled == false )
+		{
+			off8.disabled = false;
+			on8.disabled = false;
+		}
+		else
+		{
+			off8.disabled = true;
+			on8.disabled = true;
+		}	
+	}
+
+			
+	if (navigator.hid) 
+	{		
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (device)
+			{		
+				connectButton.innerText = '接続';
+				await closed;
+				device.close();
+				connected = false;
+				transferButton.disabled = true;
+				getSpiButton.disabled = true;
+				setSpiButton.disabled = true;
+				device = undefined;
+			}
+			else
+			{
+				closed = connectUSB();
+			}
+		});	
+		connectButton.disabled = false;	
+	}	
+	else
+	{
+		alert('お使いのブラウザはWeb USB APIに対応していません \nEdgeもしくはchromeを使用してください');		
+	}	
+
+
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	</script>
+  </body>
+</html>
