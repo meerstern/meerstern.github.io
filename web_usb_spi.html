@@ -457,9 +457,9 @@
 					wdataArry.push(parseInt(itemData[i],10));	
 			}
 
-			if(writeDataLen<Number(document.getElementById("spi_bytes").value))
+			if(writeDataLen!=Number(document.getElementById("spi_bytes").value))
 			{
-				alert('Write Data Size is smaller than One Transaction Bytes! \nCheck One Transaction Bytes in SPI Settings.');	
+				alert('Write Data Size is not the same size of One Transaction Bytes! \nCheck One Transaction Bytes in SPI Settings.');
 				return;
 			}	
 			spiTransfer();
