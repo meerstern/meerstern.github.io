@@ -270,7 +270,9 @@
 			  <label for="off8">OFF</label>
 			  <input type="radio" id="on8" name="sw8" value="on8"  onchange="gpioValChange();">
 			  <label for="on8">ON</label>
-			</div>		
+			</div>
+			</br>
+			<button id="updateGpio" type="button">IO更新</button>			
 		</fieldset>
 	</div>
 	<!-- ************************************************************ -->
@@ -297,7 +299,6 @@
 	</div>
 		
 	
-	
 	<h3>
 		<span>
 		本ツールは<a href="*">USB SPI変換基板</a>とブラウザを介してシリアル通信をテストするツールです
@@ -322,8 +323,10 @@
 	const clearButton = document.getElementById ('clear-button');
 	const getSpiButton = document.getElementById ('get_spi_setting');
 	const setSpiButton = document.getElementById ('set_spi_setting');
+	const updateButton = document.getElementById ('updateGpio');
 	const wDataText = document.getElementById ('writeData');
 	const rDataText = document.getElementById ('readData');
+
 	
 
 	const vendor_id 			= 0x04D8;//Microchip Technology Inc.
@@ -478,6 +481,11 @@
 		spiSettingChange();
 	});
 
+
+	updateButton.addEventListener('click', (event) =>
+	{
+		gpioValChange();
+	});
 
 	async function spiTransfer()
 	{
@@ -711,7 +719,7 @@
 			let io = res.slice(4, 6);
 			setIoDir(io);
 		}
-		else if( res[0] == CMD_GET_GPIO_VAL )
+		else if( res[0] == CMD_GET_GPIO_VAL ||  res[0] == CMD_SET_GPIO_VAL)
 		{
 			let io = res.slice(4, 6);
 			setIoVal(io);
@@ -763,7 +771,7 @@
 	
 	function setSpiSetting(io)
 	{
-		console.log(io);
+		//console.log(io);
 		// Set Bit Rate
 		let bitRateArry = io.slice(0, 4);
 		let bitRate = bitRateArry[0]+bitRateArry[1]*0x100+bitRateArry[2]*0x10000+bitRateArry[3]*0x1000000;
@@ -886,7 +894,7 @@
 	
 	function setIoDir(io)
 	{
-		console.log(io);
+		//console.log(io);
 		//IO0
 		if( ((io[0]>>0)&0x01) == 0x01 )
 			input0.checked = true;		
@@ -952,6 +960,7 @@
 	
 	function setIoVal(io)
 	{
+		//console.log(io);
 		//IO0
 		if( ((io[0]>>0)&0x01) == 0x01 )
 			on0.checked = true;
