@@ -197,10 +197,10 @@
 			  <label for="output7">出力</label>
 			</div>
 			<div>
-			　　<p>GPIO8</p>　　
+			　　<p>GPIO8 (Input Only)</p>　　
 			  <input type="radio" id="input8" name="gpio8" value="input8" checked onchange="gpioDirChange();">
 			  <label for="input8">入力</label>
-			  <input type="radio" id="output8" name="gpio8" value="output8" onchange="gpioDirChange();">
+			  <input type="radio" id="output8" name="gpio8" value="output8" disabled onchange="gpioDirChange();">
 			  <label for="output8">出力</label>
 			</div>	
 		</fieldset>
@@ -1112,12 +1112,12 @@
 		if(gpio8Mode_io.checked == true )
 		{
 			input8.disabled = false;
-			output8.disabled = false;
+			//output8.disabled = false;//ch8:InputOnly
 		}
 		else
 		{
 			input8.disabled = true;
-			output8.disabled = true;
+			//output8.disabled = true;//ch8:InputOnly
 		}
 
 	}
