@@ -18,6 +18,9 @@
 		<div>	
 			<p>メモリサイズ</p>　　
 			<select id="MemSize" style="width:180px">
+				<option value="8k">8kbit　(1kByte)</option>
+				<option value="16k">16kbit　(2kByte)</option>
+				<option value="32k">32kbit　(4kByte)</option>
 				<option value="64k">64kbit　(8kByte)</option>
 				<option value="128k">128kbit　(16kByte)</option>
 				<option value="256k">256kbit　(32kByte)</option>
@@ -1080,6 +1083,16 @@
 		// Set Mem Size
 		switch(memSizeMenu.value)
 		{
+			
+			case "8k":
+				flashSize = 1024;		//1kByte
+				break;
+			case "16k":
+				flashSize = 2048;		//2kByte
+				break;
+			case "32k":
+				flashSize = 4096;		//4kByte
+				break;
 			case "64k":
 				flashSize = 8192;		//8kByte
 				break;
@@ -1231,65 +1244,85 @@
 				}					
 				
 				// Storage Size
-				if( io[5] == 0x10 )
+				if( io[5] == 0x0A)
+				{
+					devIdText.innerText = devIdText.innerText + " 8kbit/1kByte(0x0A)";
+					memSizeMenu.options[0].selected = true;
+				}
+				else if( io[5] == 0x0B)
+				{
+					devIdText.innerText = devIdText.innerText + " 16kbit/2kByte(0x0B)";
+					memSizeMenu.options[1].selected = true;
+				}
+				else if( io[5] == 0x0C)
+				{
+					devIdText.innerText = devIdText.innerText + " 32kbit/4kByte(0x0C)";
+					memSizeMenu.options[2].selected = true;
+				}
+				else if( io[5] == 0x0D)
 				{
 					devIdText.innerText = devIdText.innerText + " 64kbit/8kByte(0x0D)";
-					memSizeMenu.options[0].selected = true;
+					memSizeMenu.options[3].selected = true;
 				}	
-				else if( io[5] == 0x10 )
+				else if( io[5] == 0x0E )
 				{
 					devIdText.innerText = devIdText.innerText + " 128kbit/16kByte(0x0E)";
-					memSizeMenu.options[1].selected = true;
+					memSizeMenu.options[4].selected = true;
 				}	
 				else if( io[5] == 0x0F )
 				{
 					devIdText.innerText = devIdText.innerText + " 256kbit/32kByte(0x0F)";
-					memSizeMenu.options[2].selected = true;
+					memSizeMenu.options[5].selected = true;
 				}	
 				else if( io[5] == 0x10 )
 				{
 					devIdText.innerText = devIdText.innerText + " 512kbit/64kByte(0x10)";
-					memSizeMenu.options[3].selected = true;
+					memSizeMenu.options[6].selected = true;
 				}	
 				else if( io[5] == 0x11 )
 				{
 					devIdText.innerText = devIdText.innerText + " 1Mbit/128kByte(0x11)";
-					memSizeMenu.options[4].selected = true;
+					memSizeMenu.options[7].selected = true;
 				}
 				else if( io[5] == 0x12 )
 				{
 					devIdText.innerText = devIdText.innerText + " 2Mbit/256kByte(0x12)";
-					memSizeMenu.options[5].selected = true;
+					memSizeMenu.options[8].selected = true;
 				}
 				else if( io[5] == 0x13 )
 				{
 					devIdText.innerText = devIdText.innerText + " 4Mbit/512kByte(0x13)";
-					memSizeMenu.options[6].selected = true;
+					memSizeMenu.options[9].selected = true;
 				}
 				else if( io[5] == 0x14 )
 				{
 					devIdText.innerText = devIdText.innerText + " 8Mbit/1MByte(0x14)";
-					memSizeMenu.options[7].selected = true;
+					memSizeMenu.options[10].selected = true;
 				}
 				else if( io[5] == 0x15 )
 				{
 					devIdText.innerText = devIdText.innerText + " 16Mbit/2MByte(0x15)";
-					memSizeMenu.options[8].selected = true;
+					memSizeMenu.options[11].selected = true;
 				}
 				else if( io[5] == 0x16 )
 				{
 					devIdText.innerText = devIdText.innerText + " 32Mbit/4MByte(0x16)";
-					memSizeMenu.options[9].selected = true;
+					memSizeMenu.options[12].selected = true;
 				}
 				else if( io[5] == 0x17 )
 				{
 					devIdText.innerText = devIdText.innerText + " 64Mbit/8MByte(0x17)";
-					memSizeMenu.options[10].selected = true;
+					memSizeMenu.options[13].selected = true;
 				}
 				else if( io[5] == 0x18 )
 				{
 					devIdText.innerText = devIdText.innerText + " 128Mbit/16MByte(0x18)";
-					memSizeMenu.options[11].selected = true;
+					memSizeMenu.options[14].selected = true;
+				}
+				else if( io[5] == 0x19 )
+				{
+					devIdText.innerText = devIdText.innerText + " 256Mbit/32MByte(0x19)";
+					memSizeMenu.options[15].selected = true;
 				}
 
 				await executeDevIdRead(null);
