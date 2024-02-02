@@ -132,6 +132,10 @@
 		document.getElementById("speed").innerText = 0;
 	});
 
+	window.addEventListener('touchmove', function(event) {
+		event.preventDefault();
+	});
+
 	function joystick(width, height)
 	{
 		ctx.beginPath();
