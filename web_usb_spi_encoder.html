@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Web Encoder Tool</title>
+		<style>
+				h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+				h2 { font-size:16pt; }
+				h3 { font-size:8pt; }
+				body { font-size:12pt; color:#444444; }
+				footer{ font-size:4pt; }
+				tarea{width: 100%;height: 6em;}			
+		</style>
+	</head>
+	<body>
+		<h1><span>Web Encoder Tool with MCP2210</span></h1>
+		<div>
+		  <p>Encoder Type</p>　　
+		  <input type="radio" id="encModeAS5048A" name="encMode" value="encModeAS5048A" checked onchange="modeChange();">
+		  <label for="encModeAS5048A">AS5048A</label>
+		  <input type="radio" id="encModeMA73X" name="encMode" value="encModeMA73X" onchange="modeChange();">
+		  <label for="encModeMA73X">MA730/732</label>
+		</div>	
+		<div>	
+			<p>読込データ</p>　　
+			<span id="readData" >0 ° </span>	
+		</div>
+	</body>
+	</br>
+	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="transfer-button" type="button" disabled>開始/停止</button>
+	
+	<h3>
+		<span>
+		本ツールは<a href="https://ssci.to/9394">USB SPI変換基板</a>とブラウザを介してエンコーダをテストするツールです
+		</span>
+	</h3>
+	<h3><span>CSはGPIO1に接続してください</span></h3>
+	<h3><span>各設定はRAMに保存されます</span></h3>	
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2024 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	Web Encoder Tool For MCP2210
+	 *	Copyright (c) 2024
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const transferButton = document.getElementById ('transfer-button');
+	const rDataText = document.getElementById ('readData');
+
+	
+
+	const vendor_id 			= 0x04D8;//Microchip Technology Inc.
+	const product_id 			= 0x00DE;//MCP2210 USB-SPI
+	
+	const CMD_LENGTH			= 0x40;//64
+	const CMD_ACCEPTED			= 0x00;
+	const MAX_TRANSFER_SIZE		= 0x3C;//60
+	
+	const CMD_GET_GPIO_SETTING	= 0x20;
+	const CMD_SET_GPIO_SETTING	= 0x21;
+	const CMD_SET_GPIO_VAL		= 0x30;
+	const CMD_GET_GPIO_VAL		= 0x31;
+	const CMD_SET_GPIO_DIR		= 0x32;
+	const CMD_GET_GPIO_DIR		= 0x33;
+	
+	const CMD_SET_SPI_SETTING	= 0x40;
+	const CMD_GET_SPI_SETTING	= 0x41;
+	const CMD_SPI_TRANSFER		= 0x42;
+
+	
+	const ioMode = {
+		io: 0,
+		cs : 1,
+		func :2
+	};
+	
+	const spiMode = {
+		mode0 : 0,
+		mode1 : 1,
+		mode2 : 2,
+		mode3 : 3		
+	};
+
+	const encMode= {
+		AS5048A : 0,
+		MA73X : 1,
+	};
+	
+	let device;
+	let connected = false;
+	let IsRunning = false;
+	let wdataArry = [];
+	let rdataArry = [];
+	let wdataOffset = 0;
+	let rdataOffset = 0;
+	let writeDataLen = 0;
+	let mode = encMode.AS5048A;
+	
+	
+	//Connect USB HID Device 
+	async function connectUSB()
+	{
+        
+		try
+		{
+		
+			
+			[device] = await navigator.hid.requestDevice(
+			  { filters: [{'vendorId': vendor_id, 'productId': product_id}] }
+			)
+		
+			console.log(device);
+						
+			const resOpen = await device.open();
+			await device.addEventListener("inputreport", handleInputReport);
+
+			console.log(device.productName+" is Connected");
+			connectButton.innerText = '切断';
+			connected = true;
+			transferButton.disabled = false;
+			
+			//Get GPIO Mode Settings
+			Sleep(30);
+			spiSettingChange();
+			
+									
+
+
+		}
+		catch (error)
+		{
+			console.log(error);
+			device.close();
+			connected = false;
+			transferButton.disabled = true;
+		}
+		finally
+		{
+
+		}
+	
+	}
+	
+	// TransferButton 
+	transferButton.addEventListener('click', (event) =>
+	{
+		wdataArry=[];
+		rdataArry=[];
+		wdataOffset = 0;
+		rdataOffset =0;
+
+		writeDataLen = 2;
+		wdataArry.push(0xFF);
+		wdataArry.push(0xFF);
+		//spiTransfer();
+		//console.log(wdataArry);
+		if(IsRunning==false)
+			IsRunning = true;
+		else
+			IsRunning = false;
+		
+				
+	});
+
+	setInterval(function()
+	{	
+		if(connected && IsRunning)
+		{
+			spiTransfer();
+		}
+	},100);
+
+
+
+	async function spiTransfer()
+	{
+		let i = 0;
+		let sendArry = new Uint8Array(CMD_LENGTH);
+		sendArry[0] = CMD_SPI_TRANSFER;
+		sendArry[1] = writeDataLen;
+
+		for( i=0; i<MAX_TRANSFER_SIZE; i++ )
+			sendArry[i+4] = wdataArry[i+wdataOffset];
+
+		//console.log(sendArry);
+		if(connected)
+			await device.sendReport(0, sendArry);
+	}
+	
+	async function sendCommand(cmd)
+	{
+		let sendArry = new Uint8Array(CMD_LENGTH);
+		sendArry.set(cmd);
+		//console.log(sendArry);	
+		if(connected)
+			await device.sendReport(0, sendArry);
+	}
+	
+
+	async function spiSettingChange()
+	{
+		let cmdArry = new Uint8Array(CMD_LENGTH);
+		cmdArry[0] = CMD_SET_SPI_SETTING;
+		
+		// Set Clk
+		let clk = 1000000;
+				
+		cmdArry[4] = (clk>>0)&0xFF;
+		cmdArry[5] = (clk>>8)&0xFF;
+		cmdArry[6] = (clk>>16)&0xFF;
+		cmdArry[7] = (clk>>24)&0xFF;
+
+		// Set CS
+		cmdArry[8] = 0xFF;
+		cmdArry[9] = 0xFF;
+
+		cmdArry[10] =	0xFD;
+		cmdArry[11] =	0x01;
+
+		// Set CS to Data Delay
+		let csDataDelay = 0;
+		cmdArry[12] = (csDataDelay>>0)&0xFF;
+		cmdArry[13] = (csDataDelay>>8)&0xFF;
+
+		// Set Data to Data Delay
+		let dataDataDelay =0;
+		cmdArry[16] = (csDataDelay>>0)&0xFF;
+		cmdArry[17] = (csDataDelay>>8)&0xFF;
+
+		// Set Data to CS Delay
+		let dataCsDelay = 0;
+		cmdArry[14] = (csDataDelay>>0)&0xFF;
+		cmdArry[15] = (csDataDelay>>8)&0xFF;
+		
+		// Set One Transaction Bytes
+		let bytes = 2;
+		cmdArry[18] = (bytes>>0)&0xFF;
+		cmdArry[19] = (bytes>>8)&0xFF;
+
+		// Set SPI Mode	
+		if(mode == encMode.AS5048A)
+			cmdArry[20] = 1;		
+		else
+			cmdArry[20] = 0;	
+
+		if(connected)
+			await device.sendReport(0, cmdArry);
+		//console.log(cmdArry);	
+
+	}
+
+
+	
+    function handleInputReport(e)
+	{
+		let received = new Uint8Array(e.data.buffer);
+		checkResponse(received);	  
+    }
+
+
+	function checkResponse(res)
+	{
+		
+		if( res[0] == CMD_SPI_TRANSFER )
+		{
+			let io = res.slice(2, CMD_LENGTH);
+			if( res[1] == CMD_ACCEPTED )
+				setSpiTransfer(io);
+			else
+				alert('SPI Transfer ERR\nErr Code:0x' + res[1].toString(16).toUpperCase());	
+		}
+	
+	}
+
+	function setSpiTransfer(io)
+	{
+		let rlen = io[0];
+		let status = io[1];
+		let i = 0;
+		let degBit=0;
+		let deg=0.0;
+
+		if(rlen>0)
+		{
+			//console.log(io);
+			if(mode == encMode.AS5048A)
+			{
+				degBit = io[3]+(io[2]<<8);
+			}
+			else
+			{
+				degBit = io[3]+(io[2]<<8);
+				degBit = degBit>>2;
+			}
+			
+			deg = (degBit&0x3FFF)*360.0/16383.0;
+			rDataText.innerText = deg.toFixed(1)+"°";
+			console.log(deg.toFixed(1));
+		}
+
+
+
+		if(status == 0x20)// SPI transfer started -> check response
+		{
+			sendCommand(new Uint8Array([CMD_SPI_TRANSFER]));
+		}
+		else if(status == 0x30) //SPI transfer not finished; received data available
+		{
+			wdataOffset = wdataOffset + MAX_TRANSFER_SIZE;
+			spiTransfer();
+		}
+
+
+	}
+
+	function modeChange()
+	{
+		if(encModeAS5048A.checked == true)
+		{
+			mode = encMode.AS5048A;
+			console.log("Mode: AS5048A");
+		}
+		else
+		{
+			mode = encMode.MA73X;
+			console.log("Mode: MA730/732");
+		}
+		spiSettingChange();
+
+	}
+
+		
+	if (navigator.hid) 
+	{		
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (device)
+			{		
+				connectButton.innerText = '接続';
+				await closed;
+				device.close();
+				connected = false;
+				transferButton.disabled = true;
+				device = undefined;
+			}
+			else
+			{
+				closed = connectUSB();
+			}
+		});	
+		connectButton.disabled = false;	
+	}	
+	else
+	{
+		alert('お使いのブラウザはWeb USB APIに対応していません \nEdgeもしくはchromeを使用してください');		
+	}	
+
+
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	</script>
+  </body>
+</html>
