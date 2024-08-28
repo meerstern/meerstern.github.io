@@ -20,44 +20,44 @@
 	<fieldset>    
 	<legend>全般設定</legend>
 	<div>
-	  <p>デバイスアドレス</p>　　
+	  <p>デバイスアドレス(Dev Addr)</p>　　
 	  <input type="text" id="devAddr" name="devAddr"  placeholder="ex) 0x64 or 100"></p>	
 	</div>	
 	<div>
-	  <p>デバイスアドレスサイズ</p>　　
-      <input type="radio" id="bit8" name="bitLen" value="bit8" checked onchange="bitChange();">
+	  <p>デバイスアドレスサイズ(Addr Size)</p>　　
+      <input type="radio" id="bit8" name="bitLen" value="bit8" onchange="bitChange();">
       <label for="bit8">8bit</label>
-      <input type="radio" id="bit7" name="bitLen" value="bit7" onchange="bitChange();">
+      <input type="radio" id="bit7" name="bitLen" value="bit7" checked onchange="bitChange();">
       <label for="bit7">7bit</label>
 	</div>	
 	</fieldset>	
 	<br/>	
 	<fieldset>    
-	<legend>書込</legend>
+	<legend>書込(Write)</legend>
 	<div>
-	  <p>レジスタ</p>　　
+	  <p>レジスタ(Reg)</p>　　
 	  <input type="text" id="writeReg" name="writeReg"  placeholder="ex) 0x31 or 49"></p>	
 	</div>	
 	<div>
-	  <p>書込データ</p>　　
+	  <p>書込データ(Data)</p>　　
 	  <input type="text" id="writeData" name="writeData"  placeholder="ex) 0x20,0x21・・・"></p>	
 	</div>	
-	<button id="write-button" type="button" disabled>書込</button>
+	<button id="write-button" type="button" disabled>書込(Write)</button>
 	</fieldset>	
 	<br/>
 	<fieldset>    
-	<legend>読込</legend>
+	<legend>読込(Read)</legend>
 	<div>
-	  <p>レジスタ</p>　　
+	  <p>レジスタ(Reg)</p>　　
 	  <input type="text" id="readReg" name="readReg"  placeholder="ex) 0x31 or 49"></p>	
 	</div>	
 	<div>
-	  <p>読込データサイズ</p>　　
+	  <p>読込データサイズ(Size)</p>　　
 	  <input type="text" id="readLen" name="readLen"  placeholder="ex) 0x10 or 16"></p>	
 	</div>
-	<h2><span id="res_string" >読込値</span></h2>	
-	<button id="read-button" type="button" disabled>読込</button>
-	<button id="clear-button" type="button">クリア</button>
+	<h2><span id="res_string" >読込値(Data)</span></h2>	
+	<button id="read-button" type="button" disabled>読込(Read)</button>
+	<button id="clear-button" type="button">クリア(Clear)</button>
 	</fieldset>	
 	
 	<h3>
@@ -67,12 +67,12 @@
 	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
 	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
 	<footer>
-	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	<p>Copyright (c) 2024 Crescent All Rights Reserved.</p>
 	</footer>
 	
 	<script>
 	/*	I2C Read Write Tool
-	 *	Copyright (c) 2022
+	 *	Copyright (c) 2024
 	 *  K.Watanabe,Crescent
 	 *  Released under the MIT license
 	 *  http://opensource.org/licenses/mit-license.php
