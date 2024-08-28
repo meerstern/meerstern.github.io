@@ -14,11 +14,11 @@
   </head>
   <body>
 	<h1><span>I2C Read/Writeテストツール </span></h1>
-	<button id="connect-button" type="button" disabled>接続</button>
+	<button id="connect-button" type="button" disabled>接続(Connect)</button>
 	<br/>
 	<br/>
 	<fieldset>    
-	<legend>全般設定</legend>
+	<legend>全般設定(Settings)</legend>
 	<div>
 	  <p>デバイスアドレス(Dev Addr)</p>　　
 	  <input type="text" id="devAddr" name="devAddr"  placeholder="ex) 0x64 or 100"></p>	
@@ -191,7 +191,7 @@
 	//Clear Read Data
 	clearButton.addEventListener('click', (event) =>
 	{
-		document.getElementById("res_string").innerText = "読込値";
+		document.getElementById("res_string").innerText = "読込値(Read Value)";
 	});
 	
 
@@ -201,7 +201,7 @@
         port = await navigator.serial.requestPort({});
         await port.open({ baudRate: 9600 });
 		
-        connectButton.innerText = '切断';	
+        connectButton.innerText = '切断(Disconnect)';	
 		writeButton.disabled = false;
 		readButton.disabled = false;
 		
@@ -294,7 +294,7 @@
 			if (port)
 			{
 				keepReading = false;				
-				connectButton.innerText = '接続';
+				connectButton.innerText = '接続(Connect)';
 				readButton.disabled = true;
 				writeButton.disabled = true;
 				reader.cancel();
