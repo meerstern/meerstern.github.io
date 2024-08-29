@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Web ADC Tool</title>
+		<style>
+				h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+				h2 { font-size:16pt; }
+				h3 { font-size:8pt; }
+				body { font-size:12pt; color:#444444; }
+				footer{ font-size:4pt; }
+				tarea{width: 100%;height: 6em;}			
+		</style>
+	</head>
+	<body>
+		<h1><span>Web ADC Tool with MCP2210</span></h1>
+		<div>
+		  <p>ADC Type</p>　　
+		  <input type="radio" id="adcModeMCP3208" name="adcMode" value="adcModeMCP3208" checked onchange="adcChange();">
+		  <label for="adcModeMCP3208">MCP3208</label>
+		  <input type="radio" id="adcModeMCP3204" name="adcMode" value="adcModeMCP3204" onchange="adcChange();">
+		  <label for="adcModeMCP3204">MCP3204</label>
+		</div>	
+		<div>
+		  <p>Ref Voltage</p>　　
+		  <input type="radio" id="vref5V" name="vrefMode" value="vref5V" checked onchange="refChange();">
+		  <label for="vref5V">5V</label>
+		  <input type="radio" id="vref4_096V" name="vrefMode" value="vref4_096V" onchange="refChange();">
+		  <label for="vref4_096V">4.096V</label>
+		  <input type="radio" id="vref3_3V" name="vrefMode" value="vref3_3V" onchange="refChange();">
+		  <label for="vref3_3V">3.3V</label>
+		</div>
+		<div>
+		  <p>Input Type</p>　　
+		  <input type="radio" id="single" name="inputMode" value="single" checked onchange="inputChange();">
+		  <label for="single">Single End</label>
+		  <input type="radio" id="diff" name="inputMode" value="diff" onchange="inputChange();">
+		  <label for="diff">Differential</label>
+		</div>			
+		<div>	
+			<p>ADC Value</p>
+			<span >CH0:</span>
+			<span id="readData0" >0.000 V</span></br>
+			<span >CH1:</span>
+			<span id="readData1" >0.000 V</span></br>
+			<span >CH2:</span>
+			<span id="readData2" >0.000 V</span></br>
+			<span >CH3: </span>
+			<span id="readData3" >0.000 V</span></br>
+			<span >CH4: </span>
+			<span id="readData4" >0.000 V</span></br>
+			<span >CH5: </span>
+			<span id="readData5" >0.000 V</span></br>
+			<span >CH6: </span>
+			<span id="readData6" >0.000 V</span></br>
+			<span >CH7: </span>			
+			<span id="readData7" >0.000 V</span></br>				
+		</div>
+	</body>
+	</br>
+	<button id="connect-button" type="button" disabled>Connect</button>
+	<button id="transfer-button" type="button" disabled>Start/Stop</button>
+	
+	<h3>
+		<span>
+		本ツールは<a href="https://ssci.to/9394">USB SPI変換基板</a>とブラウザを介してADCをテストするツールです
+		</span>
+	</h3>
+	<h3><span>CSはGPIO1に接続してください</span></h3>
+	<h3><span>各設定はRAMに保存されます</span></h3>	
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2024 Crescent All Rights Reserved.</p>
+	</footer>
+
+	<script>
+	/*	Web ADC Tool For MCP2210
+	 *	Copyright (c) 2024
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const transferButton = document.getElementById ('transfer-button');
+	const rDataText0 = document.getElementById ('readData0');
+	const rDataText1 = document.getElementById ('readData1');
+	const rDataText2 = document.getElementById ('readData2');
+	const rDataText3 = document.getElementById ('readData3');
+	const rDataText4 = document.getElementById ('readData4');
+	const rDataText5 = document.getElementById ('readData5');
+	const rDataText6 = document.getElementById ('readData6');
+	const rDataText7 = document.getElementById ('readData7');
+	
+
+	const vendor_id 			= 0x04D8;//Microchip Technology Inc.
+	const product_id 			= 0x00DE;//MCP2210 USB-SPI
+	
+	const CMD_LENGTH			= 0x40;//64
+	const CMD_ACCEPTED			= 0x00;
+	const MAX_TRANSFER_SIZE		= 0x3C;//60
+	
+	const CMD_GET_GPIO_SETTING	= 0x20;
+	const CMD_SET_GPIO_SETTING	= 0x21;
+	const CMD_SET_GPIO_VAL		= 0x30;
+	const CMD_GET_GPIO_VAL		= 0x31;
+	const CMD_SET_GPIO_DIR		= 0x32;
+	const CMD_GET_GPIO_DIR		= 0x33;
+	
+	const CMD_SET_SPI_SETTING	= 0x40;
+	const CMD_GET_SPI_SETTING	= 0x41;
+	const CMD_SPI_TRANSFER		= 0x42;
+	
+	const ADC_MAX_BIT			= 4095;
+	const ADC_START_BIT			= 0x04;
+
+	
+	const ioMode = {
+		io: 0,
+		cs : 1,
+		func :2
+	};
+	
+	const spiMode = {
+		mode0 : 0,
+		mode1 : 1,
+		mode2 : 2,
+		mode3 : 3		
+	};
+
+	const adcMode= {
+		MCP3208 : 0,
+		MCP3204 : 1,
+	};
+	
+	const refMode= {
+		REF5V : 0,
+		REF4_096V : 1,
+		REF3_3V : 2,
+	};
+	
+	const inputMode= {
+		Single : 0,
+		Diff : 1
+	};
+	
+	const adCh = {
+		ch0 : 0,
+		ch1 : 1,
+		ch2 : 2,
+		ch3 : 3,
+		ch4 : 4,
+		ch5 : 5,
+		ch6 : 6,
+		ch7 : 7
+	};
+
+	
+	let device;
+	let connected = false;
+	let IsRunning = false;
+	let wdataArry = [];
+	let rdataArry = [];
+	let wdataOffset = 0;
+	let rdataOffset = 0;
+	let writeDataLen = 0;
+	let adcM = adcMode.MCP3208;
+	let refM = refMode.REF5V;
+	let inputM = inputMode.Single;
+	let refVoltage = 5.0;
+	let isSingle = 1;
+	let adcCh = adCh.ch0;
+	
+	
+	//Connect USB HID Device 
+	async function connectUSB()
+	{
+        
+		try
+		{
+		
+			
+			[device] = await navigator.hid.requestDevice(
+			  { filters: [{'vendorId': vendor_id, 'productId': product_id}] }
+			)
+		
+			console.log(device);
+						
+			const resOpen = await device.open();
+			await device.addEventListener("inputreport", handleInputReport);
+
+			console.log(device.productName+" is Connected");
+			connectButton.innerText = 'Disconnect';
+			connected = true;
+			transferButton.disabled = false;
+			
+			//Get GPIO Mode Settings
+			Sleep(30);
+			spiSettingChange();
+			
+									
+
+
+		}
+		catch (error)
+		{
+			console.log(error);
+			device.close();
+			connected = false;
+			transferButton.disabled = true;
+		}
+		finally
+		{
+
+		}
+	
+	}
+	
+	// TransferButton 
+	transferButton.addEventListener('click', (event) =>
+	{
+		wdataArry=[];		
+		wdataOffset = 0;
+		rdataArry=[];
+		rdataOffset =0;
+		
+		//spiTransfer();
+		//console.log(wdataArry);
+		if(IsRunning==false)
+			IsRunning = true;
+		else
+			IsRunning = false;
+		
+				
+	});
+
+	setInterval(function()
+	{	
+		if(connected && IsRunning)
+		{
+			setWriteData();
+			spiTransfer();
+		}
+	},100);
+
+
+
+	async function spiTransfer()
+	{
+		let i = 0;
+		let sendArry = new Uint8Array(CMD_LENGTH);
+		sendArry[0] = CMD_SPI_TRANSFER;
+		sendArry[1] = writeDataLen;
+
+		for( i=0; i<MAX_TRANSFER_SIZE; i++ )
+			sendArry[i+4] = wdataArry[i+wdataOffset];
+
+		console.log(sendArry);
+		if(connected)
+			await device.sendReport(0, sendArry);
+	}
+	
+	async function sendCommand(cmd)
+	{
+		let sendArry = new Uint8Array(CMD_LENGTH);
+		sendArry.set(cmd);
+		//console.log(sendArry);	
+		if(connected)
+			await device.sendReport(0, sendArry);
+	}
+	
+
+	async function spiSettingChange()
+	{
+		let cmdArry = new Uint8Array(CMD_LENGTH);
+		cmdArry[0] = CMD_SET_SPI_SETTING;
+		
+		// Set Clk
+		let clk = 1000000;
+				
+		cmdArry[4] = (clk>>0)&0xFF;
+		cmdArry[5] = (clk>>8)&0xFF;
+		cmdArry[6] = (clk>>16)&0xFF;
+		cmdArry[7] = (clk>>24)&0xFF;
+
+		// Set CS
+		cmdArry[8] = 0xFF;
+		cmdArry[9] = 0xFF;
+
+		cmdArry[10] =	0xFD;
+		cmdArry[11] =	0x01;
+
+		// Set CS to Data Delay
+		let csDataDelay = 0;
+		cmdArry[12] = (csDataDelay>>0)&0xFF;
+		cmdArry[13] = (csDataDelay>>8)&0xFF;
+
+		// Set Data to Data Delay
+		let dataDataDelay =0;
+		cmdArry[16] = (csDataDelay>>0)&0xFF;
+		cmdArry[17] = (csDataDelay>>8)&0xFF;
+
+		// Set Data to CS Delay
+		let dataCsDelay = 0;
+		cmdArry[14] = (csDataDelay>>0)&0xFF;
+		cmdArry[15] = (csDataDelay>>8)&0xFF;
+		
+		// Set One Transaction Bytes
+		let bytes = 3;
+		cmdArry[18] = (bytes>>0)&0xFF;
+		cmdArry[19] = (bytes>>8)&0xFF;
+
+		// Set SPI Mode	
+		cmdArry[20] = 1;	
+
+		if(connected)
+			await device.sendReport(0, cmdArry);
+		//console.log(cmdArry);	
+
+	}
+
+	function setWriteData()
+	{
+		wdataArry=[];		
+		wdataOffset = 0;
+		writeDataLen = 3;
+		
+		let isS = (inputM == inputMode.Single)?2:0;
+		let chH =  (adcCh>>2)&0x01;		
+		let wdat0 = (ADC_START_BIT + isS + chH)&0xFF;
+		let wdat1 = (adcCh<<6)&0xC0;
+		let wdat2 = 0x00;
+		
+		wdataArry.push(wdat0);
+		wdataArry.push(wdat1);
+		wdataArry.push(wdat2);
+		console.log(wdataArry);			
+	}
+	
+    function handleInputReport(e)
+	{
+		let received = new Uint8Array(e.data.buffer);
+		checkResponse(received);	  
+    }
+
+
+	function checkResponse(res)
+	{
+		
+		if( res[0] == CMD_SPI_TRANSFER )
+		{
+			let io = res.slice(2, CMD_LENGTH);
+			if( res[1] == CMD_ACCEPTED )
+				setSpiTransfer(io);
+			else
+				alert('SPI Transfer ERR\nErr Code:0x' + res[1].toString(16).toUpperCase());	
+		}
+	
+	}
+
+	function setSpiTransfer(io)
+	{
+		let rlen = io[0];
+		let status = io[1];
+		let i = 0;
+		let degBit=0;
+		let volt=0.0;
+
+		if(rlen>0)
+		{
+			//console.log(io);
+			degBit = io[4]+((io[3]&0x0F)<<8);
+			volt = refVoltage*degBit/ADC_MAX_BIT;
+			if( adcCh == adCh.ch0 )
+				rDataText0.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch1 )
+				rDataText1.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch2 )
+				rDataText2.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch3 )
+				rDataText3.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch4 )
+				rDataText4.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch5 )
+				rDataText5.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch6 )
+				rDataText6.innerText = volt.toFixed(3)+" V";
+			else if( adcCh == adCh.ch7 )
+				rDataText7.innerText = volt.toFixed(3)+" V";
+
+			console.log("Ch" + String(adcCh) + " : " + volt.toFixed(3));
+
+			//Convert Next Channel
+			if(adcM == adcMode.MCP3208)
+			{
+				if(adcCh == adCh.ch0)
+					adcCh = adCh.ch1;
+				else if(adcCh == adCh.ch1)
+					adcCh = adCh.ch2;
+				else if(adcCh == adCh.ch2)
+					adcCh = adCh.ch3;
+				else if(adcCh == adCh.ch3)
+					adcCh = adCh.ch4;
+				else if(adcCh == adCh.ch4)
+					adcCh = adCh.ch5;
+				else if(adcCh == adCh.ch5)
+					adcCh = adCh.ch6;
+				else if(adcCh == adCh.ch6)
+					adcCh = adCh.ch7;
+				else if(adcCh == adCh.ch7)
+					adcCh = adCh.ch0;
+			}
+			else
+			{
+				if(adcCh == adCh.ch0)
+					adcCh = adCh.ch1;
+				else if(adcCh == adCh.ch1)
+					adcCh = adCh.ch2;
+				else if(adcCh == adCh.ch2)
+					adcCh = adCh.ch3;
+				else if(adcCh == adCh.ch3)
+					adcCh = adCh.ch0;
+			}			
+		}
+
+		if(status == 0x20)// SPI transfer started -> check response
+		{
+			sendCommand(new Uint8Array([CMD_SPI_TRANSFER]));
+		}
+		else if(status == 0x30) //SPI transfer not finished; received data available
+		{
+			wdataOffset = wdataOffset + MAX_TRANSFER_SIZE;
+			spiTransfer();
+		}
+
+
+	}
+
+	function adcChange()
+	{
+		if(adcModeMCP3208.checked == true)
+		{
+			adcM = adcMode.MCP3208;
+			console.log("ADC Mode: MCP3208");
+		}
+		else
+		{
+			adcM = adcMode.MCP3204;
+			console.log("ADC Mode: MCP3204");
+		}
+	}
+	
+	function refChange()
+	{
+		if(vref5V.checked == true)
+		{
+			refM = refMode.REF5V;
+			refVoltage = 5.0;
+			console.log("VREF Mode: 5V");
+		}
+		else if(vref4_096V.checked == true)
+		{
+			refM = refMode.REF4_096V;
+			refVoltage = 4.096;
+			console.log("VREF Mode: 4.096V");
+		}
+		else
+		{
+			refM = refMode.REF3_3V;
+			refVoltage = 3.3;
+			console.log("VREF Mode: 3.3V");
+		}
+	}
+	
+	function inputChange()
+	{
+		if(single.checked == true)
+		{
+			inputM = inputMode.Single;
+			isSingle = 1;
+			console.log("Input Mode: Single");
+		}
+		else
+		{
+			inputM = inputMode.Diff;
+			isSingle = 0;
+			console.log("Input Mode: Diff");
+		}
+	}
+
+		
+	if (navigator.hid) 
+	{		
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (device)
+			{		
+				connectButton.innerText = 'Connect';
+				await closed;
+				device.close();
+				connected = false;
+				transferButton.disabled = true;
+				device = undefined;
+			}
+			else
+			{
+				closed = connectUSB();
+			}
+		});	
+		connectButton.disabled = false;	
+	}	
+	else
+	{
+		alert('お使いのブラウザはWeb USB APIに対応していません \nEdgeもしくはchromeを使用してください');		
+	}	
+
+
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	</script>
+  </body>
+</html>
