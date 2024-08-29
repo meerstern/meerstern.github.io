@@ -255,7 +255,7 @@
 		for( i=0; i<MAX_TRANSFER_SIZE; i++ )
 			sendArry[i+4] = wdataArry[i+wdataOffset];
 
-		console.log(sendArry);
+		//console.log(sendArry);
 		if(connected)
 			await device.sendReport(0, sendArry);
 	}
@@ -334,7 +334,7 @@
 		wdataArry.push(wdat0);
 		wdataArry.push(wdat1);
 		wdataArry.push(wdat2);
-		console.log(wdataArry);			
+		//console.log(wdataArry);			
 	}
 	
     function handleInputReport(e)
