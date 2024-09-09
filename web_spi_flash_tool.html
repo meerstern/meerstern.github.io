@@ -16,7 +16,7 @@
 		<h1><span>Web SPI Flash Tool with MCP2210</span></h1>
 
 		<div>	
-			<p>メモリサイズ</p>　　
+			<p>メモリサイズ(Mem Size)</p>　　
 			<select id="MemSize" style="width:180px">
 				<option value="8k">8kbit　(1kByte)</option>
 				<option value="16k">16kbit　(2kByte)</option>
@@ -37,7 +37,7 @@
 			</select>
 		</div>
 		<div>	
-			<p>ページサイズ</p>　　
+			<p>ページサイズ(Page Size)</p>　　
 			<select id="PageSize" style="width:180px">
 				<option value="4">4 Bytes</option>
 				<option value="8">8 Bytes</option>
@@ -49,15 +49,19 @@
 				<option value="512">512 Bytes</option>
 				<option value="1024">1024 Bytes</option>
 			</select>
-		</div>	
+		</div>
 		<div>	
-			<p>インストラクション</p>　　
+			<p>オフセット(Addr Offset)</p>　　
+			<input type="text" id="offset" name="offset" value="0x0" placeholder="ex) 0x64 or 100"></p>	
+		</div>			
+		<div>	
+			<p>インストラクション(Instructions)</p>　　
 			<select id="Instructions" style="width:180px">
 				<option value="25" selected>25XX(ID:9Fh,ST:05h,R:03h,WE:06h,CE:60h,PW:02h)</option>
 			</select>
 		</div>
 		<div>	
-			<p>アドレス長</p>　　
+			<p>アドレス長(Address Length)</p>　　
 			<select id="AddressLen" style="width:180px">
 				<option value="2">2 Bytes</option>
 				<option value="3" selected>3 Bytes</option>
@@ -65,7 +69,7 @@
 			</select>
 		</div>
 		<div>	
-			<p>クロック</p>　　
+			<p>クロック(Clock)</p>　　
 			<select id="Clock" style="width:180px">
 				<option value="1">1MHz</option>
 				<option value="2">2MHz</option>
@@ -76,7 +80,7 @@
 			</select>
 		</div>		
 		<div>	
-			<p>ファイル選択</p>　　
+			<p>ファイル選択(File)</p>　　
 			<input id="rfile" type="file" accept=".bin" onchange="readFile(this)">
 		</div>	
 		<p>Device ID</p>　　
@@ -86,12 +90,12 @@
 		</br>
 	</body>
 	</br>
-	<button id="connect-button" type="button" style="width:100px" disabled>接続</button>
-	<button id="device-id-button" type="button" style="width:100px" disabled>DeviceID読込</button>
-	<button id="read-button" type="button" style="width:100px" disabled>読込</button>
-	<button id="erase-button" type="button" style="width:100px" disabled>消去</button>
-	<button id="write-button" type="button" style="width:100px" disabled>書込</button>
-	
+	<button id="connect-button" type="button" style="width:180px" disabled>接続(Connect)</button>
+	<button id="device-id-button" type="button" style="width:180px" disabled>DeviceID読込(ID Read)</button>
+	<button id="read-button" type="button" style="width:100px" disabled>読込(Read)</button>
+	<button id="erase-button" type="button" style="width:100px" disabled>消去(Erase)</button>
+	<button id="write-button" type="button" style="width:100px" disabled>書込(Write)</button>
+	<button id="verify-button" type="button" style="width:100px" disabled>検証(Verify)</button>
 	<h3>
 		<span>
 		本ツールは<a href="https://www.switch-science.com/collections/marketplace/products/9394">USB SPI変換基板</a>
@@ -123,6 +127,7 @@
 	const readButton = document.getElementById ('read-button');
 	const eraseButton = document.getElementById ('erase-button');
 	const writeButton = document.getElementById ('write-button');
+	const verifyButton = document.getElementById ('verify-button');
 	const devIdText = document.getElementById ('devID');
 	const progressText = document.getElementById ('progress');
 
@@ -130,6 +135,7 @@
 	const pageSizeMenu = document.getElementById ('PageSize');
 	const clockMenu = document.getElementById ('Clock');
 	const addrLenMenu = document.getElementById ('AddressLen');
+	const offsetValue = document.getElementById("offset");
 	
 
 	const vendor_id 			= 0x04D8;//Microchip Technology Inc.
@@ -249,6 +255,21 @@
 		cs_high3 : 	19,
 		end:		20
 	};
+	
+	const verifySq = 
+	{
+		none : 		0,
+		init: 		1, 		
+		cs_low : 	2,
+		set_byte4: 	3,
+		cmd_addr : 	4,
+		cmd_res:	5,
+		set_byte32: 6,		
+		read_data : 7,
+		read_res:	8,
+		cs_high : 	9,
+		end:		10		
+	};
 
 	
 	let device;
@@ -258,12 +279,15 @@
 	let wdataOffset = 0;
 	let rdataOffset = 0;
 	let writeDataLen = 0;
-	let flashArry = [];		//Read & Write Buffer
-	let flashArrySize = 0;	//Read & Write Buffer Size
+	let flashArry = [];		//Read Buffer
+	let flashArrySize = 0;	//Read Buffer Size
+	let fileArry = [];		//Write Buffer
+	let fileArrySize = 0;	//Write Buffer Size
 	let flashSize = 0;		//Setting of Size of Flash 
 	let pageSize = 0;		//Setting of Size of Page 
 	let memAddr = 0;		//Read & Write Mem Address
 	let byteOffset = 0;		//Read & Write Byte Count 
+	let memAddrOffset =0;	//Mem Address Offset 
 	let clock = 8;
 	let addrLen = 3;
 	
@@ -271,10 +295,9 @@
 	let readSqState = readSq.none;
 	let eraseSqState = eraseSq.none;
 	let writeSqState = writeSq.none;
+	let vrifySqState = verifySq.none;
 	let aborted = false;
-
-	
-
+	let verifyFailCount = 0;
 	
 	//Connect USB HID Device 
 	async function connectUSB()
@@ -291,18 +314,20 @@
 			await device.addEventListener("inputreport", handleInputReport);
 
 			console.log(device.productName+" is Connected");
-			connectButton.innerText = '切断';
+			connectButton.innerText = '切断(Disconnect)';
 			connected = true;
 			devIdReadButton.disabled = false;
 			readButton.disabled = false;
 			eraseButton.disabled = false;
 			writeButton.disabled = false;
+			verifyButton.disabled = false;
 			aborted = false;
 
 			devIdSqState = devIdSq.none;
 			readSqState = readSq.none;
 			eraseSqState = eraseSq.none;
 			writeSqState = writeSq.none;
+			verifySqState = verifySq.none;
 	
 			loadSettings();
 
@@ -325,6 +350,7 @@
 			readButton.disabled = true;
 			eraseButton.disabled = true;
 			writeButton.disabled = true;
+			verifyButton.disabled = true;
 		}
 		finally
 		{
@@ -342,11 +368,13 @@
 			readButton.disabled = true;
 			eraseButton.disabled = true;
 			writeButton.disabled = true;
-			devIdReadButton.innerText = "読込中止";
+			verifyButton.disabled = true;
+			devIdReadButton.innerText = "読込中止(Cancel)";
 			devIdSqState = devIdSq.set_byte;
 			readSqState = readSq.none;
 			eraseSqState = eraseSq.none;
 			writeSqState = writeSq.none;
+			verifySqState = verifySq.none;
 			progressText.innerText = "0%(0Byte/0Byte)";
 			devIdText.innerText = "";
 			executeDevIdRead(null);
@@ -357,7 +385,8 @@
 			readButton.disabled = false;
 			eraseButton.disabled = false;
 			writeButton.disabled = false;
-			devIdReadButton.innerText = "DeviceID読込";
+			verifyButton.disabled = false;
+			devIdReadButton.innerText = "DeviceID読込(ID Read)";
 			devIdSqState = devIdSq.none;
 		}
 	});
@@ -370,11 +399,13 @@
 			devIdReadButton.disabled = true;
 			eraseButton.disabled = true;
 			writeButton.disabled = true;
-			readButton.innerText = "読込中止";
+			verifyButton.disabled = true;
+			readButton.innerText = "読込中止(Cancel)";
 			readSqState = readSq.init;
 			devIdSqState = devIdSq.none;
 			eraseSqState = eraseSq.none;
 			writeSqState = writeSq.none;
+			verifySqState = verifySq.none;
 			executeReadSeq(null);
 		}
 		else
@@ -383,7 +414,8 @@
 			devIdReadButton.disabled = false;
 			eraseButton.disabled = false;
 			writeButton.disabled = false;
-			readButton.innerText = "読込";
+			verifyButton.disabled = false;
+			readButton.innerText = "読込(Read)";
 			readSqState = readSq.none;
 		}
 	});
@@ -396,11 +428,13 @@
 			devIdReadButton.disabled = true;
 			readButton.disabled = true;
 			writeButton.disabled = true;
-			eraseButton.innerText = "消去中";
+			verifyButton.disabled = true;
+			eraseButton.innerText = "消去中(Erasing)";
 			eraseSqState = eraseSq.set_byte1;
 			devIdSqState = devIdSq.none;
 			readSqState = readSq.none;
 			writeSqState = writeSq.none;
+			verifySqState = verifySq.none;
 			executeEraseSeq(null);
 		}
 		else
@@ -409,7 +443,8 @@
 			devIdReadButton.disabled = false;
 			readButton.disabled = false;
 			writeButton.disabled = false;
-			eraseButton.innerText = "消去";
+			verifyButton.disabled = false;
+			eraseButton.innerText = "消去(Erase)";
 			eraseSqState = eraseSq.none;
 		}
 	});
@@ -422,11 +457,13 @@
 			devIdReadButton.disabled = true;
 			readButton.disabled = true;
 			eraseButton.disabled = true;
-			writeButton.innerText = "書込中止";
+			verifyButton.disabled = true;
+			writeButton.innerText = "書込中止(Cancel)";
 			writeSqState = writeSq.init;
 			devIdSqState = devIdSq.none;
 			readSqState = readSq.none;
 			eraseSqState = eraseSq.none;
+			verifySqState = verifySq.none;
 			executeWriteSeq(null);
 		}
 		else
@@ -435,8 +472,40 @@
 			devIdReadButton.disabled = false;
 			readButton.disabled = false;
 			eraseButton.disabled = false;
-			writeButton.innerText = "書込";
+			verifyButton.disabled = false;
+			writeButton.innerText = "書込(Write)";
 			writeSqState = writeSq.none;
+		}	
+	});
+	
+	verifyButton.addEventListener('click', (event) =>
+	{		
+		if(verifySqState == verifySq.none)
+		{
+			aborted = false;
+			devIdReadButton.disabled = true;
+			readButton.disabled = true;
+			eraseButton.disabled = true;
+			writeButton.disabled = true;
+			verifyButton.innerText = "検証中止(Cancel)";			
+			devIdSqState = devIdSq.none;
+			readSqState = readSq.none;
+			eraseSqState = eraseSq.none;
+			writeSqState = writeSq.none;
+			verifySqState = verifySq.init;
+			verifyFailCount = 0;
+			executeVerifySeq(null);
+		}
+		else
+		{
+			aborted = true;
+			devIdReadButton.disabled = false;
+			readButton.disabled = false;
+			eraseButton.disabled = false;
+			verifyButton.disabled = false;
+			writeButton.disabled = false;
+			verifyButton.innerText = "検証(Verify)";
+			verifySqState = verifySq.none;
 		}	
 	});
 
@@ -449,12 +518,12 @@
 
 		reader.onload = async function() 
 		{
-			flashArry = new Uint8Array(reader.result);
-			flashArrySize = flashArry.length;
-			console.log(flashArry);
+			fileArry = new Uint8Array(reader.result);
+			fileArrySize = fileArry.length;
+			console.log(fileArry);
 			loadSettings();
 
-			if( flashSize != flashArry.length )
+			if( flashSize != fileArry.length && memAddrOffset == 0 )
 			{
 				alert("Has Difference between FileSize and FlashSize!\r\nCheck File or SizeSetting.");
 			}
@@ -473,15 +542,14 @@
 				break;
 
 			case devIdSq.set_byte:
-				console.log("Start Device ID Read");				
-				await SetSpiSettings(4);				
+				console.log("Start Device ID Read");	
 				devIdSqState = devIdSq.cs_low;
+				await SetSpiSettings(4);
 				break;
 
 			case devIdSq.cs_low:
-				
-				await SetGpioVal(0);
 				devIdSqState = devIdSq.write_data;
+				await SetGpioVal(0);				
 				break;
 
 			case devIdSq.write_data:				
@@ -491,8 +559,8 @@
 				rdataOffset = 0;
 				writeDataLen = 4;		
 				wdataArry[0] = flashCmd.devIdRead1;
-				await spiTransfer();
 				devIdSqState = devIdSq.read_data;
+				await spiTransfer();				
 				break;
 			
 			
@@ -501,12 +569,13 @@
 				break;
 			
 			case devIdSq.cs_high:
+				devIdSqState = devIdSq.none;
 				await SetGpioVal(1);
-				devIdReadButton.innerText = "DeviceID読込";
+				devIdReadButton.innerText = "DeviceID読込(ID Read)";
 				readButton.disabled = false;
 				eraseButton.disabled = false;
 				writeButton.disabled = false;
-				devIdSqState = devIdSq.none;
+				verifyButton.disabled = false;				
 				console.log("Device ID Read End");
 				break;
 
@@ -526,16 +595,16 @@
 				console.log("Read Start");
 				flashArry = [];
 				flashArrySize = 0;
-				memAddr = 0; 
+				memAddr = memAddrOffset; 
 				byteOffset = 0;
 				loadSettings();
-				await SetGpioVal(0);//Dummy
 				readSqState = readSq.cs_low;
+				await SetGpioVal(0);//Dummy
 				break;
 
 			case readSq.cs_low:
-				await SetGpioVal(0);
 				readSqState = readSq.set_byte4;
+				await SetGpioVal(0);
 				break;
 
 			case readSq.set_byte4:				
@@ -543,8 +612,8 @@
 				rdataArry = [];
 				wdataOffset = 0;
 				rdataOffset = 0;
-				await SetSpiSettings(addrLen + 1);
 				readSqState = readSq.cmd_addr;
+				await SetSpiSettings(addrLen + 1);
 				break;
 
 			case readSq.cmd_addr:
@@ -569,17 +638,17 @@
 					wdataArry[3] = (memAddr>>8)&0xFF;
 					wdataArry[4] = (memAddr>>0)&0xFF;
 				}
-				await spiTransfer();				
 				readSqState = readSq.cmd_res;
+				await spiTransfer();
 				break;	
 			
 			case readSq.cmd_res:
 				await setSpiTransfer(res.slice(2, CMD_LENGTH));		
 				break;
 				
-			case readSq.set_byte32:				
+			case readSq.set_byte32:	
+				readSqState = readSq.read_data;			
 				await SetSpiSettings(32);
-				readSqState = readSq.read_data;
 				break;
 
 			case readSq.read_data:
@@ -588,8 +657,8 @@
 				rdataArry = [];		
 				wdataOffset = 0;
 				rdataOffset = 0;
-				await spiTransfer();
 				readSqState = readSq.read_res;
+				await spiTransfer();
 				break;
 			
 			case readSq.read_res:
@@ -619,14 +688,15 @@
 				await SetGpioVal(1);		
 				break;
 
-			case readSq.end:				
-				console.log("Read End");
+			case readSq.end:
 				console.log(flashArry);
-
 				devIdReadButton.disabled = false;
 				eraseButton.disabled = false;
 				writeButton.disabled = false;
-				readButton.innerText = "読込";
+				verifyButton.disabled = false;
+				readButton.innerText = "読込(Read)";
+				console.log("Read End");
+
 				//Download Binary Data
 				var bin = new Uint8Array(flashArry);
 				var doc = document.createElement("a");
@@ -634,6 +704,7 @@
 				doc.href = URL.createObjectURL(blob);
 				doc.download = "flash.bin";
 				doc.click();
+				
 				readSqState = readSq.none;
 				break;
 
@@ -651,14 +722,14 @@
 				break;
 
 			case eraseSq.set_byte1:
-				await SetSpiSettings(1);
 				console.log("Erase Start");
 				eraseSqState = eraseSq.cs_low1;
+				await SetSpiSettings(1);				
 				break;
 			
 			case eraseSq.cs_low1:
-				await SetGpioVal(0);
 				eraseSqState = eraseSq.cmd_wen;
+				await SetGpioVal(0);				
 				break;
 			
 			case eraseSq.cmd_wen:
@@ -668,8 +739,8 @@
 				rdataOffset = 0;
 				writeDataLen = 1;		
 				wdataArry[0] = flashCmd.writeEn;
-				await spiTransfer();
 				eraseSqState = eraseSq.wen_res;
+				await spiTransfer();				
 				break;
 
 			case eraseSq.wen_res:
@@ -677,13 +748,13 @@
 				break;
 			
 			case eraseSq.cs_high1:
+				eraseSqState = eraseSq.cs_low2;
 				await SetGpioVal(1);
-				eraseSqState = eraseSq.cs_low2;				
 				break;
 			
 			case eraseSq.cs_low2:
-				await SetGpioVal(0);
 				eraseSqState = eraseSq.cmd_erase;
+				await SetGpioVal(0);
 				break;
 
 			case eraseSq.cmd_erase:
@@ -693,8 +764,8 @@
 				rdataOffset = 0;
 				writeDataLen = 1;		
 				wdataArry[0] = flashCmd.chipErase;
-				await spiTransfer();
 				eraseSqState = eraseSq.erase_res;
+				await spiTransfer();				
 				break;
 			
 			case eraseSq.erase_res:
@@ -702,18 +773,18 @@
 				break;
 			
 			case eraseSq.cs_high2:
-				await SetGpioVal(1);
 				eraseSqState = eraseSq.set_byte2;
+				await SetGpioVal(1);				
 				break;
 			
 			case eraseSq.set_byte2:
-				await SetSpiSettings(2);
 				eraseSqState = eraseSq.cs_low3;
+				await SetSpiSettings(2);
 				break;
 			
 			case eraseSq.cs_low3:
-				await SetGpioVal(0);
 				eraseSqState = eraseSq.cmd_status;
+				await SetGpioVal(0);
 				break;
 
 			case eraseSq.cmd_status:
@@ -723,8 +794,8 @@
 				rdataOffset = 0;
 				writeDataLen = 2;		
 				wdataArry[0] = flashCmd.status;
-				await spiTransfer();
 				eraseSqState = eraseSq.read_res;
+				await spiTransfer();				
 				break;
 
 			case eraseSq.read_res:
@@ -736,7 +807,8 @@
 				devIdReadButton.disabled = false;
 				readButton.disabled = false;
 				writeButton.disabled = false;
-				eraseButton.innerText = "消去";
+				verifyButton.disabled = false;
+				eraseButton.innerText = "消去(Erase)";
 				console.log("Erase Finished");
 				eraseSqState = eraseSq.none;
 				break;
@@ -755,33 +827,32 @@
 
 			case writeSq.init:
 				console.log("Write Start");
-				memAddr = 0; 
+				memAddr = memAddrOffset; 
 				byteOffset = 0;
 				loadSettings();
 
-				if(flashArrySize==0)
+				if(fileArrySize==0)
 				{
 					devIdReadButton.disabled = false;
 					readButton.disabled = false;
 					eraseButton.disabled = false;
-					writeButton.innerText = "書込";					
+					writeButton.innerText = "書込(Write)";					
 					alert("Please select file to write.");
 					writeSqState = writeSq.none;
 					return;
 				}
-
-				await SetGpioVal(1);
 				writeSqState = writeSq.cs_low1;
+				await SetGpioVal(1);				
 				break;
 
-			case writeSq.cs_low1:				
+			case writeSq.cs_low1:
+				writeSqState = writeSq.set_byte1;		
 				await SetGpioVal(0);
-				writeSqState = writeSq.set_byte1;
 				break;
 
 			case writeSq.set_byte1:
-				await SetSpiSettings(1);
 				writeSqState = writeSq.cmd_wen;
+				await SetSpiSettings(1);
 				break;
 
 			case writeSq.cmd_wen:
@@ -791,8 +862,8 @@
 				rdataOffset = 0;
 				writeDataLen = 1;		
 				wdataArry[0] = flashCmd.writeEn;
-				await spiTransfer();
 				writeSqState = writeSq.wen_res;
+				await spiTransfer();				
 				break;
 			
 			case writeSq.wen_res:
@@ -800,18 +871,18 @@
 				break;
 
 			case writeSq.cs_high1:
-				await SetGpioVal(1);
 				writeSqState = writeSq.cs_low2;
+				await SetGpioVal(1);
 				break;
 
 			case writeSq.cs_low2:
-				await SetGpioVal(0);
 				writeSqState = writeSq.set_byte4;
+				await SetGpioVal(0);
 				break;
 
 			case writeSq.set_byte4:
-				await SetSpiSettings(addrLen + 1);
 				writeSqState = writeSq.cmd_addr;
+				await SetSpiSettings(addrLen + 1);
 				break;
 
 			case writeSq.cmd_addr:
@@ -836,8 +907,8 @@
 					wdataArry[3] = (memAddr>>8)&0xFF;
 					wdataArry[4] = (memAddr>>0)&0xFF;
 				}
-				await spiTransfer();
 				writeSqState = writeSq.cmd_res;
+				await spiTransfer();				
 				break;
 
 			case writeSq.cmd_res:
@@ -845,8 +916,8 @@
 				break;
 
 			case writeSq.set_byte32:
+				writeSqState = writeSq.write_data;
 				await SetSpiSettings(32);
-				writeSqState = writeSq.write_data;				
 				break;
 
 			case writeSq.write_data:
@@ -858,11 +929,10 @@
 
 				for( i=0; i < 32; i++)
 				{
-					wdataArry[i] = flashArry[i+byteOffset+memAddr];
+					wdataArry[i] = fileArry[i+byteOffset+memAddr];
 				}
-				
-				await spiTransfer();
 				writeSqState = writeSq.write_res;
+				await spiTransfer();				
 				break;
 
 			case writeSq.write_res:
@@ -870,18 +940,18 @@
 				break;
 
 			case writeSq.cs_high2:
-				await SetGpioVal(1);
 				writeSqState = writeSq.set_byte2;
+				await SetGpioVal(1);
 				break;
 
-			case writeSq.set_byte2:				
+			case writeSq.set_byte2:
+				writeSqState = writeSq.cs_low3;		
 				await SetSpiSettings(2);
-				writeSqState = writeSq.cs_low3;
 				break;
 
 			case writeSq.cs_low3:
-				await SetGpioVal(0);
 				writeSqState = writeSq.cmd_status;
+				await SetGpioVal(0);
 				break;
 
 			case writeSq.cmd_status:
@@ -891,8 +961,8 @@
 				rdataOffset = 0;
 				writeDataLen = 2;		
 				wdataArry[0] = flashCmd.status;
-				await spiTransfer();
 				writeSqState = writeSq.read_res;
+				await spiTransfer();				
 				break;
 
 			case writeSq.read_res:
@@ -929,7 +999,8 @@
 				devIdReadButton.disabled = false;
 				readButton.disabled = false;
 				eraseButton.disabled = false;
-				writeButton.innerText = "書込";
+				verifyButton.disabled = false;
+				writeButton.innerText = "書込(Write)";
 				console.log("Write Finished");
 				writeSqState = writeSq.none;
 				break;
@@ -939,6 +1010,142 @@
 		}
 	}
 
+
+	async function executeVerifySeq(res)
+	{
+		switch(verifySqState)
+		{
+			case verifySq.none:
+				break;
+			
+			case verifySq.init:
+				console.log("Verify Start");
+				memAddr = memAddrOffset; 
+				byteOffset = 0;
+				loadSettings();
+				if(fileArrySize==0)
+				{
+					devIdReadButton.disabled = false;
+					eraseButton.disabled = false;
+					readButton.disabled = false;
+					writeButton.disabled = false;
+					verifyButton.innerText = "検証(Verify)";		
+					alert("Please select file to verify.");
+					verifySqState = verifySq.none;
+					return;
+				}
+				verifySqState = verifySq.cs_low;
+				await SetGpioVal(0);//Dummy
+				break;
+
+			case verifySq.cs_low:
+				verifySqState = verifySq.set_byte4;
+				await SetGpioVal(0);
+				break;
+
+			case verifySq.set_byte4:				
+				wdataArry = [];
+				rdataArry = [];
+				wdataOffset = 0;
+				rdataOffset = 0;
+				verifySqState = verifySq.cmd_addr;
+				await SetSpiSettings(addrLen + 1);
+				break;
+
+			case verifySq.cmd_addr:
+				writeDataLen = addrLen + 1;		
+				wdataArry[0] = flashCmd.read;
+				
+				if( addrLen == 2 )
+				{
+					wdataArry[1] = (memAddr>>8)&0xFF;
+					wdataArry[2] = (memAddr>>0)&0xFF;
+				}
+				else if( addrLen == 3 )
+				{
+					wdataArry[1] = (memAddr>>16)&0xFF;
+					wdataArry[2] = (memAddr>>8)&0xFF;
+					wdataArry[3] = (memAddr>>0)&0xFF;
+				}
+				else if( addrLen == 4 )
+				{
+					wdataArry[1] = (memAddr>>24)&0xFF;
+					wdataArry[2] = (memAddr>>16)&0xFF;
+					wdataArry[3] = (memAddr>>8)&0xFF;
+					wdataArry[4] = (memAddr>>0)&0xFF;
+				}
+				verifySqState = verifySq.cmd_res;
+				await spiTransfer();
+				break;	
+			
+			case verifySq.cmd_res:
+				await setSpiTransfer(res.slice(2, CMD_LENGTH));		
+				break;
+				
+			case verifySq.set_byte32:	
+				verifySqState = verifySq.read_data;			
+				await SetSpiSettings(32);
+				break;
+
+			case verifySq.read_data:
+				writeDataLen = 32;
+				wdataArry = [];
+				rdataArry = [];		
+				wdataOffset = 0;
+				rdataOffset = 0;
+				verifySqState = verifySq.read_res;
+				await spiTransfer();
+				break;
+			
+			case verifySq.read_res:
+				await setSpiTransfer(res.slice(2, CMD_LENGTH));
+				break;
+			
+			case verifySq.cs_high:
+				
+				if( flashArrySize >= flashSize)	//Read Flash End
+				{
+					verifySqState = verifySq.end;
+				}
+				else							//Read Page End, Next Page
+				{
+					verifySqState = verifySq.cs_low;
+					memAddr = memAddr + byteOffset;
+				}
+				percent = flashArrySize*100.0/flashSize;
+				if(percent>99 && flashArrySize != flashSize)
+					percent = 99.0;
+				progressText.innerText = percent.toFixed()
+										+"%\t("+String(flashArrySize)
+										+"/\t"
+										+String(flashSize)
+										+" Byte)";					
+				byteOffset = 0;	
+				await SetGpioVal(1);		
+				break;
+
+			case verifySq.end:
+				console.log(flashArry);
+				devIdReadButton.disabled = false;
+				eraseButton.disabled = false;
+				readButton.disabled = false;
+				writeButton.disabled = false;
+				verifyButton.innerText = "検証(Verify)";
+				console.log("Verify End");
+
+				if(verifyFailCount!=0)
+					alert("Verify Result: Not Mached!");
+				else
+					alert("Verify Result: Data Mached!");
+				
+				verifySqState = verifySq.none;
+				break;
+
+			default:
+				break;
+		}
+
+	}
 	
 	async function spiTransfer()
 	{
@@ -1147,10 +1354,21 @@
 
 		// Set Address Length
 		addrLen = parseInt(addrLenMenu.value, 10);
-
+		
+		
+		// Address Offset 
+		if(offsetValue.value!="")
+		{
+			if(offsetValue.value[1]=="x")
+				memAddrOffset = parseInt(offsetValue.value, 16);
+			else
+				memAddrOffset = parseInt(offsetValue.value, 10);
+		}
+		
 		console.log(	"FlashSize: " + Number(flashSize) + " Bytes, "+
 						"PageSize: " + Number(pageSize) +" Bytes, " + 
 						"Clock: " + Number(clock) + " MHz, " +
+						"Addr Offset: " + Number(memAddrOffset) + ", " +
 						"AddrLen: " + Number(addrLen) + " Bytes");
 	}
 
@@ -1173,6 +1391,10 @@
 		else if ( writeSqState !=0 )
 		{
 			await executeWriteSeq(res);
+		}
+		else if ( verifySqState !=0 )
+		{
+			await executeVerifySeq(res);
 		}
 		
 		if( res[0] == CMD_SPI_TRANSFER && (res[1] == 0xF7 || res[1] == 0xF8) )
@@ -1197,7 +1419,7 @@
 				rdataOffset++;
 			}
 		}
-		else if( readSqState == readSq.read_res && rlen == 32)
+		else if( readSqState == readSq.read_res && rlen == 32 )
 		{
 			for( i=0; i < rlen; i++)
 			{
@@ -1205,6 +1427,25 @@
 				flashArrySize++;
 				byteOffset++;
 			}
+		}
+		else if( verifySqState == verifySq.read_res && rlen == 32 )
+		{
+			for( i=0; i < rlen; i++)
+			{
+				flashArry[flashArrySize] = io[i+2];
+				
+				if(flashArry[flashArrySize]!= fileArry[flashArrySize])
+				{
+					console.log(	"Not matched! Address: " + flashArrySize.toString(16) 
+								  + " Flash: " + flashArry[flashArrySize].toString(16) 
+								  +	" File: " + fileArry[flashArrySize].toString(16) );
+					verifyFailCount++;
+				}				
+				flashArrySize++;
+				byteOffset++;
+			}
+			
+		
 		}
 		
 		if(status == 0x20)		// SPI transfer started -> check response
@@ -1238,6 +1479,10 @@
 				else if( rlen == 4 && io[3] == 0x20 )
 				{
 					devIdText.innerText = "Micron(0x20)";
+				}
+				else if( rlen == 4 && io[3] == 0x1F )
+				{
+					devIdText.innerText = "Adesto(0x1F)";
 				}
 				else if( rlen == 4 )
 				{
@@ -1295,9 +1540,9 @@
 					devIdText.innerText = devIdText.innerText + " 4Mbit/512kByte(0x13)";
 					memSizeMenu.options[9].selected = true;
 				}
-				else if( io[5] == 0x14 )
+				else if( io[5] == 0x14 || (io[4]&0x1F) == 0x05 )
 				{
-					devIdText.innerText = devIdText.innerText + " 8Mbit/1MByte(0x14)";
+					devIdText.innerText = devIdText.innerText + " 8Mbit/1MByte(0x14/0x05)";
 					memSizeMenu.options[10].selected = true;
 				}
 				else if( io[5] == 0x15 )
@@ -1418,7 +1663,28 @@
 					await executeWriteSeq(null);
 				}				
 				return;
-			}		
+			}
+			else if( verifySqState !=0 )
+			{
+				if( verifySqState == verifySq.cmd_res )
+				{
+					verifySqState = verifySq.set_byte32;		
+					await executeVerifySeq(null);
+				}				
+				else if( verifySqState == verifySq.read_res )
+				{
+					if( byteOffset >= pageSize )
+					{
+						verifySqState = verifySq.cs_high;
+					}
+					else
+					{
+						verifySqState = verifySq.read_data;
+					}					
+					await executeVerifySeq(null);
+				}
+				return;
+			}			
 		}
 	}
 
@@ -1429,7 +1695,7 @@
 		{
 			if (device)
 			{		
-				connectButton.innerText = '接続';
+				connectButton.innerText = '接続(Connect)';
 				await closed;
 
 				device.close();
