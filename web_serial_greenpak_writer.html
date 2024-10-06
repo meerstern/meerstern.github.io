@@ -12,7 +12,7 @@
 	</style>
   </head>
   <body>
-	<h1><span>GreenPAK Writer For SLG46826</span></h1>
+	<h1><span>GreenPAK Writer For SLG46824/SLG46826/SLG47004</span></h1>
 	<div>	
 		<p>アドレス(I2C Address)</p>　　
 		<select id="I2CAddr" style="width:180px">
@@ -41,7 +41,7 @@
 	</div>
 	<h2><span id="msg_string" ></span></h2>
 	</br>	
-	<button id="connect-button" type="button" style="width:180px" disabled>接続(Connect)</button>
+	<button id="connect-button" type="button" style="width:140px" disabled>接続(Connect)</button>
 	<button id="ping-button" type="button" style="width:120px" disabled>確認(Ping)</button>
 	<button id="read-button" type="button" style="width:120px" disabled>NVM読込(Read)</button>
 	<button id="erase-button" type="button" style="width:120px" disabled>NVM消去(Erase)</button>
@@ -53,6 +53,7 @@
 	<h3><span>バッファサイズの制約上、USBシリアルI2C変換基板V2のみ対応しています</span></h3>
 	<h3><span>エラッタ対策のため、NVM消去の際は変換基板上のGPIO0とRSTをショートさせてください</span></h3>
 	<h3><span>NVM消去後やNVM書込後は電源を入れ直してください</span></h3>
+	<h3><span>応答がない場合はUSB再接続及びリロードを行ってください</span></h3>
 	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
 	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
 	<footer>
@@ -60,7 +61,7 @@
 	</footer>
 	
 	<script>
-	/*	GreenPAK Writer For SLG46826
+	/*	GreenPAK Writer For SLG46824/SLG46826/SLG47004
 	 *	Copyright (c) 2024
 	 *  K.Watanabe,Crescent
 	 *  Released under the MIT license
@@ -91,7 +92,8 @@
 	
 	let NVM_CONFIG = 0x02;
 	let ERM_CONFIG = 0x03;
-	let NVM_AREA = 0x80;
+	let NVM_AREA = 0x80;//For SLG46824/SLG46826
+	let NVM_AREA2 = 0xC0;//For SLG46824/SLG46826/SLG47004
 	let ERM_AREA = 0x90;
 	let ERASE_CMD = 0xE3;
 	
@@ -194,7 +196,7 @@
 				var ctrl=addr<<3;
 				//ctrl|=NVM_CONFIG;
 				ctrl=ctrl<<1;				
-				var bytes = new Uint8Array([0x53, ctrl, 0x02, ERASE_CMD, NVM_AREA|mindex, 0x50]);
+				var bytes = new Uint8Array([0x53, ctrl, 0x02, ERASE_CMD, NVM_AREA2|mindex, 0x50]);
 				var resets = new Uint8Array([0x57, 0x02, 0x5A, 0x55, 0x02, 0x50]);//GPIO0 Out& Set Low
 				dataIndex=0;					
 				writer.write(bytes);
@@ -262,7 +264,7 @@
 				
 				writer.write(bytes);
 				console.log("NVM Write Addr: 0x" + (mindex).toString(16));
-				console.log(bytes);	
+				//console.log(bytes);	
 				Sleep(500);
 				writer.releaseLock();
 				
@@ -283,8 +285,6 @@
 						reader.releaseLock();
 						break;
 					}
-				  
-				  
 				  
 					if (value)
 					{
@@ -365,7 +365,6 @@
 						if(eraseMode)
 						{
 							//console.log(value);
-							//Nothing todo
 							if( (value[0] == 0x4F || value[1] == 0x4B ) && memIndex<0x10 )
 							{
 								Sleep(300);
@@ -384,12 +383,8 @@
 						//Write Mode
 						if(writeMode)
 						{						
-							//Nothing todo
-							//console.log(value);								
+							//Nothing todo						
 						}
-						
-						//console.log(value);		
-
 					}
 				}
 			}			 
@@ -462,18 +457,7 @@
 					var hex=cols.substr( 2*j, 2 );					
 					dataArry.push(parseInt(hex, 16) );
 				}
-			}
-			var r="";
-			for(var j=0;j<16;j++)
-			{
-				r=r+(j).toString(16)+":"
-				for(var i=0;i<16;i++)
-				{
-					var str = dataArry[i+j*16].toString(16) + ",";
-					r=r+str;
-				}
-				r=r+"\n";
-			}
+			}			
 			//console.log(r);			
 		};
 
