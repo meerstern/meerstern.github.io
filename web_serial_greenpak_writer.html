@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GreenPAK Writer</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:4pt; }			
+	</style>
+  </head>
+  <body>
+	<h1><span>GreenPAK Writer For SLG46826</span></h1>
+	<div>	
+		<p>アドレス(I2C Address)</p>　　
+		<select id="I2CAddr" style="width:180px">
+			<option value="0">0x00</option>
+			<option value="1" selected>0x01</option>
+			<option value="2">0x02</option>
+			<option value="3">0x03</option>
+			<option value="4">0x04</option>
+			<option value="5">0x05</option>
+			<option value="6">0x06</option>
+			<option value="7">0x07</option>
+			<option value="8">0x08</option>
+			<option value="9">0x09</option>
+			<option value="10">0x0A</option>
+			<option value="11">0x0B</option>
+			<option value="12">0x0C</option>
+			<option value="13">0x0D</option>
+			<option value="14">0x0E</option>
+			<option value="15">0x0F</option>
+		</select>
+	</div>
+	
+	<div>	
+		<p>ファイル選択(File)</p>　　
+		<input id="rfile" type="file" accept=".hex" onchange="readFile(this)">
+	</div>
+	<h2><span id="msg_string" ></span></h2>
+	</br>	
+	<button id="connect-button" type="button" style="width:180px" disabled>接続(Connect)</button>
+	<button id="ping-button" type="button" style="width:120px" disabled>確認(Ping)</button>
+	<button id="read-button" type="button" style="width:120px" disabled>NVM読込(Read)</button>
+	<button id="erase-button" type="button" style="width:120px" disabled>NVM消去(Erase)</button>
+	<button id="write-button" type="button" style="width:120px" disabled>NVM書込(Write)</button>
+	<h3>
+		<span>
+		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザのみでGreenPAKに書込するツールです</span>
+	</h3>
+	<h3><span>バッファサイズの制約上、USBシリアルI2C変換基板V2のみ対応しています</span></h3>
+	<h3><span>エラッタ対策のため、NVM消去の際は変換基板上のGPIO0とRSTをショートさせてください</span></h3>
+	<h3><span>NVM消去後やNVM書込後は電源を入れ直してください</span></h3>
+	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
+	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<footer>
+	<p>Copyright (c) 2024 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+	/*	GreenPAK Writer For SLG46826
+	 *	Copyright (c) 2024
+	 *  K.Watanabe,Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	const connectButton = document.getElementById ('connect-button');
+	const pingButton = document.getElementById ('ping-button');
+	const readButton = document.getElementById ('read-button');
+	const eraseButton = document.getElementById ('erase-button');
+	const writeButton = document.getElementById ('write-button');
+	const addrSel = document.getElementById ('I2CAddr');
+	const msgString = document.getElementById ('msg_string');
+	
+	let port;
+	let keepReading = true;
+	let reader;
+	let dataIndex = 0;
+	let str = "";
+	let closed;
+	let addr = 0x00;
+	let results = "";
+	let memIndex = 0;
+	
+	let pingMode = false;
+	let readMode = false;
+	let eraseMode = false;
+	let writeMode = false;
+	
+	let NVM_CONFIG = 0x02;
+	let ERM_CONFIG = 0x03;
+	let NVM_AREA = 0x80;
+	let ERM_AREA = 0x90;
+	let ERASE_CMD = 0xE3;
+	
+	let nvmArry = Array(256);
+	let dataArry = [];
+	
+		
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+		
+        connectButton.innerText = '切断(Disconnect)';
+		
+		pingButton.disabled = false;
+		readButton.disabled = false;
+		eraseButton.disabled = false;
+		writeButton.disabled = false;
+		
+		pingMode = false;
+		readMode = false;
+		eraseMode = false;
+		writeMode = false;
+		
+		function buttonDisable(flg)
+		{
+			pingButton.disabled = flg;
+			readButton.disabled = flg;
+			eraseButton.disabled = flg;
+			writeButton.disabled = flg;
+		}
+		
+		//Ping
+		pingButton.addEventListener('click', (event) =>
+		{
+          if (port && port.writable) 
+		  {		  
+			pingMode = true;
+			buttonDisable(true);
+			document.getElementById("msg_string").innerText = "No Device Found";
+			const writer = port.writable.getWriter();			
+			console.log("Ping");	
+			dataIndex=0;
+			results="";			
+			var addr=addrSel.value;
+			var ctrl=addr<<3;
+			ctrl=ctrl<<1;
+			const bytes = new Uint8Array([0x53, ctrl, 0x01, 0x00, 0x53, ctrl+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
+			writer.write(bytes);
+			//console.log("Ping End");
+			writer.releaseLock();
+          }
+        });
+		
+        //NVM Read
+		readButton.addEventListener('click', (event) =>
+		{
+			readMode = true;
+			buttonDisable(true);
+			dataIndex=0;
+			memIndex = 0;
+			results="";
+			executeNvmRead(memIndex);
+        });
+		
+		function executeNvmRead(mindex)
+		{
+			
+			if (port && port.writable)
+			{
+				var addr=addrSel.value;
+				var ctrl=addr<<3;
+				ctrl|=NVM_CONFIG;
+				ctrl=ctrl<<1;
+				
+				const bytes = new Uint8Array([0x53, ctrl, 0x01, mindex*0x10, 0x53, ctrl+1, 0x10, 0x50]);
+				const writer = port.writable.getWriter();
+				writer.write(bytes);
+				writer.releaseLock();
+			}			
+		}
+		
+		//NVM Erase
+		eraseButton.addEventListener('click', (event) =>
+		{
+			eraseMode = true;
+			buttonDisable(true);
+			var i = 0;
+			dataIndex=0;
+			memIndex = 0;
+			executeNvmErase(memIndex);
+        });
+		
+		function executeNvmErase(mindex)
+		{
+			if (port && port.writable)
+			{				
+				const writer = port.writable.getWriter();
+				var addr=addrSel.value;
+				var ctrl=addr<<3;
+				//ctrl|=NVM_CONFIG;
+				ctrl=ctrl<<1;				
+				var bytes = new Uint8Array([0x53, ctrl, 0x02, ERASE_CMD, NVM_AREA|mindex, 0x50]);
+				var resets = new Uint8Array([0x57, 0x02, 0x5A, 0x55, 0x02, 0x50]);//GPIO0 Out& Set Low
+				dataIndex=0;					
+				writer.write(bytes);
+				Sleep(100);
+				writer.write(resets);				
+				Sleep(100);
+				console.log("NVM Erase Addr: 0x" + (mindex).toString(16));
+				writer.releaseLock();
+			}
+		
+		}
+		
+		//NVM Write
+		writeButton.addEventListener('click', (event) =>
+		{
+			
+			if(dataArry.length==0)
+			{
+				alert('Hexファイルを選択してください');
+				return;
+			}
+			writeMode = true;
+			buttonDisable(true);
+			var i = 0;		
+			
+			for ( i=0; i<0x10; i++)
+			{
+				executeNvmWrite(i);
+				//Sleep(1000);
+			}
+			console.log("Write Finished");
+			writeMode = false;
+			buttonDisable(false);
+        });
+		
+		function executeNvmWrite(mindex)
+		{
+			if (port && port.writable)
+			{				
+				const writer = port.writable.getWriter();
+				var addr=0;//NVM Erased & address =0
+				var ctrl=addr<<3;
+				ctrl|=NVM_CONFIG;
+				ctrl=ctrl<<1;
+				var bytes = new Uint8Array([0x53, ctrl, 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x50, 0x52, 0x0A, 0x50]);
+				var i = mindex;
+				dataIndex=0;
+				bytes[3] = i*0x10;
+				bytes[4] = dataArry[i*0x10+0];
+				bytes[5] = dataArry[i*0x10+1];
+				bytes[6] = dataArry[i*0x10+2];
+				bytes[7] = dataArry[i*0x10+3];
+				bytes[8] = dataArry[i*0x10+4];
+				bytes[9] = dataArry[i*0x10+5];
+				bytes[10]= dataArry[i*0x10+6];
+				bytes[11]= dataArry[i*0x10+7];
+				bytes[12]= dataArry[i*0x10+8];
+				bytes[13]= dataArry[i*0x10+9];
+				bytes[14]= dataArry[i*0x10+10];
+				bytes[15]= dataArry[i*0x10+11];
+				bytes[16]= dataArry[i*0x10+12];
+				bytes[17]= dataArry[i*0x10+13];
+				bytes[18]= dataArry[i*0x10+14];
+				bytes[19]= dataArry[i*0x10+15];
+				
+				writer.write(bytes);
+				console.log("NVM Write Addr: 0x" + (mindex).toString(16));
+				console.log(bytes);	
+				Sleep(500);
+				writer.releaseLock();
+				
+			}
+		}
+				
+
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try
+			{
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done)
+					{
+						reader.releaseLock();
+						break;
+					}
+				  
+				  
+				  
+					if (value)
+					{
+						
+						//Ping
+						if(pingMode)
+						{
+							//console.log(value);
+							if(value[0] == 0xF0 || value[1] == 0xF0)
+							{
+								msgString.innerText = "Found Device!!";
+								console.log("Found Device!!");									
+								pingMode = false;
+								buttonDisable(false);
+							}								
+							else if(value[0] == 0xF8 || value[1] == 0xF8)
+							{
+								msgString.innerText = "No Device Found";
+								console.log("No Device Found");	
+								pingMode = false;
+								buttonDisable(false);
+							}
+						}
+						
+						//Read Mode
+						if(readMode)
+						{
+							
+							nvmArry[dataIndex] = value[0];
+							dataIndex = dataIndex+1;							
+							if(dataIndex!=0 && dataIndex%16==0 && memIndex<0x10)
+							{								
+								memIndex++;
+								executeNvmRead(memIndex);
+							}
+							else if(memIndex>=0x10)
+							{								
+								readMode = false;
+								buttonDisable(false);
+								//Download Binary Data
+								var sData = "";
+								var i,k;
+								
+								for (j = 0; j < 16; j++)
+								{
+									var checksum = 0;
+									var line = ":1000";									
+									var addr = ('00' + (j*0x10).toString(16).toUpperCase()).substr(-2);									
+									line = line + addr + "00"; 
+									checksum = 0x10 + j*0x10;
+									for (i = 0; i < 16; i++)
+									{										
+										var val = nvmArry[i+j*16];
+										var valstr = ('00' + (val).toString(16).toUpperCase()).substr(-2);
+										line = line + valstr;
+										checksum += val;
+									}
+									checksum = checksum % 256;
+									if (checksum > 0) checksum = 256 - checksum;
+									var sumstr = ('00' + (checksum).toString(16).toUpperCase()).substr(-2);
+									line = line + sumstr + "\n";									
+									sData = sData + line
+								}
+								
+								sData = sData + ":00000001FF";				
+								
+								var hex = sData;
+								var doc = document.createElement("a");
+								const blob = new Blob([hex], { "type" : "application/octet-stream" });
+								doc.href = URL.createObjectURL(blob);
+								doc.download = "flash.hex";
+								doc.click();
+								console.log(hex);							
+							}
+						}
+						
+						//Erase Mode
+						if(eraseMode)
+						{
+							//console.log(value);
+							//Nothing todo
+							if( (value[0] == 0x4F || value[1] == 0x4B ) && memIndex<0x10 )
+							{
+								Sleep(300);
+								memIndex++;
+								executeNvmErase(memIndex);
+							}
+							else if(memIndex>=0x10)
+							{
+								eraseMode = false;
+								buttonDisable(false);
+								console.log("Erase Finished");
+							}
+													
+						}
+						
+						//Write Mode
+						if(writeMode)
+						{						
+							//Nothing todo
+							//console.log(value);								
+						}
+						
+						//console.log(value);		
+
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+			
+		}
+		
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = '接続(Connect)';
+				pingButton.disabled = true;
+				readButton.disabled = true;
+				eraseButton.disabled = true;
+				writeButton.disabled = true;				
+				pingMode = false;
+				readMode = false;
+				eraseMode = false;
+				writeMode = false;
+
+				reader.cancel();
+				await closed;
+				port = undefined;						
+				
+			}
+			else
+			{
+				closed = getReader();
+			}
+		});
+
+		connectButton.disabled = false;
+	
+	}
+	else
+	{
+		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+	}
+	
+	function readFile(input) 
+	{
+		//Load File to write Mem
+		let file = input.files[0];
+		let reader = new FileReader();
+		
+		reader.readAsText(file);
+		reader.onload = async function() 
+		{			
+			dataArry = [];
+			var rdata = reader.result;	
+			var lines = rdata.split('\n');			
+			for(var i=0; i<lines.length-1; i++)
+			{
+				var cols=lines[i].substr( 9, 32 );				
+				for(var j=0; j<16; j++)
+				{
+					var hex=cols.substr( 2*j, 2 );					
+					dataArry.push(parseInt(hex, 16) );
+				}
+			}
+			var r="";
+			for(var j=0;j<16;j++)
+			{
+				r=r+(j).toString(16)+":"
+				for(var i=0;i<16;i++)
+				{
+					var str = dataArry[i+j*16].toString(16) + ",";
+					r=r+str;
+				}
+				r=r+"\n";
+			}
+			//console.log(r);			
+		};
+
+		reader.onerror = function() {
+			console.log(reader.error);
+		};
+	}
+	//Wait Function
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+
+	</script>
+  </body>
+</html>
