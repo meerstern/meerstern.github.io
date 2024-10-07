@@ -38,24 +38,32 @@
 	<div>	
 		<p>ファイル選択(File)</p>　　
 		<input id="rfile" type="file" accept=".hex" onchange="readFile(this)">
-	</div>
+	</div>	
+	<div>
+	  <p>メモリ選択(Target)</p>　　	
+      <input type="radio" id="NVM" name="mode" value="NVM" checked onchange="modeChange();">
+      <label for="NVM">NVM(Chip Configuration)</label>
+      <input type="radio" id="EEPROM" name="mode" value="EEPROM" onchange="modeChange();">
+      <label for="EEPROM">EEPROM(User Memory)</label>
+	</div>	
 	<h2><span id="msg_string" ></span></h2>
 	</br>	
 	<button id="connect-button" type="button" style="width:140px" disabled>接続(Connect)</button>
 	<button id="ping-button" type="button" style="width:120px" disabled>確認(Ping)</button>
-	<button id="read-button" type="button" style="width:120px" disabled>NVM読込(Read)</button>
-	<button id="erase-button" type="button" style="width:120px" disabled>NVM消去(Erase)</button>
-	<button id="write-button" type="button" style="width:120px" disabled>NVM書込(Write)</button>
+	<button id="read-button" type="button" style="width:120px" disabled>読込(Read)</button>
+	<button id="erase-button" type="button" style="width:120px" disabled>消去(Erase)</button>
+	<button id="write-button" type="button" style="width:120px" disabled>書込(Write)</button>
 	<h3>
 		<span>
 		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザのみでGreenPAKに書込するツールです</span>
 	</h3>
 	<h3><span>バッファサイズの制約上、USBシリアルI2C変換基板V2のみ対応しています</span></h3>
-	<h3><span>エラッタ対策のため、NVM消去の際は変換基板上のGPIO0とRSTをショートさせてください</span></h3>
-	<h3><span>NVM消去後やNVM書込後は電源を入れ直してください</span></h3>
+	<h3><span>エラッタ対策のため、消去の際は変換基板上のGPIO0とRSTをショートさせてください</span></h3>
+	<h3><span>消去後や書込後は電源を入れ直してください</span></h3>
 	<h3><span>応答がない場合はUSB再接続及びリロードを行ってください</span></h3>
 	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
 	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<h3><span>本ツールによるデータ読込/書込ミス、データ喪失等、一切の責任を負いかねます</span></h3>
 	<footer>
 	<p>Copyright (c) 2024 Crescent All Rights Reserved.</p>
 	</footer>
@@ -89,6 +97,7 @@
 	let readMode = false;
 	let eraseMode = false;
 	let writeMode = false;
+	let NvmMode = true;
 	
 	let NVM_CONFIG = 0x02;
 	let ERM_CONFIG = 0x03;
@@ -118,6 +127,8 @@
 		readMode = false;
 		eraseMode = false;
 		writeMode = false;
+		
+		
 		
 		function buttonDisable(flg)
 		{
@@ -167,7 +178,12 @@
 			{
 				var addr=addrSel.value;
 				var ctrl=addr<<3;
-				ctrl|=NVM_CONFIG;
+				
+				if(NvmMode==true)
+					ctrl|=NVM_CONFIG;
+				else
+					ctrl|=ERM_CONFIG;
+					
 				ctrl=ctrl<<1;
 				
 				const bytes = new Uint8Array([0x53, ctrl, 0x01, mindex*0x10, 0x53, ctrl+1, 0x10, 0x50]);
@@ -199,7 +215,11 @@
 				ctrl=ctrl<<1;				
 				var bytes = new Uint8Array([0x53, ctrl, 0x02, ERASE_CMD, NVM_AREA2|mindex, 0x50]);
 				var resets = new Uint8Array([0x57, 0x02, 0x5A, 0x55, 0x02, 0x50]);//GPIO0 Out& Set Low
-				dataIndex=0;					
+				dataIndex=0;
+				
+				if(NvmMode==false)
+					bytes[4]=ERM_AREA2|mindex;
+					
 				writer.write(bytes);
 				Sleep(100);
 				writer.write(resets);				
@@ -240,7 +260,12 @@
 				const writer = port.writable.getWriter();
 				var addr=0;//NVM Erased & address =0
 				var ctrl=addr<<3;
-				ctrl|=NVM_CONFIG;
+				
+				if(NvmMode==true)
+					ctrl|=NVM_CONFIG;
+				else
+					ctrl|=ERM_CONFIG;
+					
 				ctrl=ctrl<<1;
 				var bytes = new Uint8Array([0x53, ctrl, 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x50, 0x52, 0x0A, 0x50]);
 				var i = mindex;
@@ -471,6 +496,20 @@
 	{
 		var start = new Date();
 		while( new Date() - start < milli_second );
+	}
+		
+	function modeChange()
+	{
+		if(NVM.checked==true)
+		{
+			NvmMode = true;
+			console.log("Target:NVM");	
+		}
+		else
+		{
+			NvmMode = false;
+			console.log("Target:EEPROM");	
+		}	
 	}
 
 	</script>
