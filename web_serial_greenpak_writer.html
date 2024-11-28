@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- saved from url=(0059)https://meerstern.github.io/web_serial_greenpak_writer.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
     <title>GreenPAK Writer</title>
 	<style>
 			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
@@ -17,7 +17,7 @@
 		<p>Control Code(7bit I2C Address)</p>　　
 		<select id="I2CAddr" style="width:180px">
 			<option value="0">0x00(0x00)</option>
-			<option value="1" selected="">0x01(0x08)</option>
+			<option value="1" selected>0x01(0x08)</option>
 			<option value="2">0x02(0x10)</option>
 			<option value="3">0x03(0x18)</option>
 			<option value="4">0x04(0x20)</option>
@@ -41,18 +41,18 @@
 	</div>	
 	<div>
 	  <p>メモリ選択(Target)</p>　　	
-      <input type="radio" id="NVM" name="mode" value="NVM" checked="" onchange="modeChange();">
+      <input type="radio" id="NVM" name="mode" value="NVM" checked onchange="modeChange();">
       <label for="NVM">NVM(Chip Configuration)</label>
       <input type="radio" id="EEPROM" name="mode" value="EEPROM" onchange="modeChange();">
       <label for="EEPROM">EEPROM(User Memory)</label>
 	</div>	
-	<h2><span id="msg_string"></span></h2>
-	<br>	
-	<button id="connect-button" type="button" style="width:140px">接続(Connect)</button>
-	<button id="ping-button" type="button" style="width:120px">確認(Ping)</button>
-	<button id="read-button" type="button" style="width:120px">読込(Read)</button>
-	<button id="erase-button" type="button" style="width:120px">消去(Erase)</button>
-	<button id="write-button" type="button" style="width:120px">書込(Write)</button>
+	<h2><span id="msg_string" ></span></h2>
+	</br>	
+	<button id="connect-button" type="button" style="width:140px" disabled>接続(Connect)</button>
+	<button id="ping-button" type="button" style="width:120px" disabled>確認(Ping)</button>
+	<button id="read-button" type="button" style="width:120px" disabled>読込(Read)</button>
+	<button id="erase-button" type="button" style="width:120px" disabled>消去(Erase)</button>
+	<button id="write-button" type="button" style="width:120px" disabled>書込(Write)</button>
 	<h3>
 		<span>
 		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザのみでGreenPAKに書込するツールです</span>
@@ -149,11 +149,10 @@
 			document.getElementById("msg_string").innerText = "No Device Found";
 			const writer = port.writable.getWriter();			
 			console.log("Ping");
-
 			var resets = new Uint8Array([0x57, 0x02, 0x5A, 0x55, 0x02, 0x50]);//GPIO0 Out& Set Low
 			writer.write(resets);
 			console.log("reset done.");				
-			Sleep(500);
+			Sleep(500);			
 			dataIndex=0;
 			results="";			
 			var addr=addrSel.value;
@@ -519,6 +518,5 @@
 	}
 
 	</script>
-  
-
-</body></html>
+  </body>
+</html>
