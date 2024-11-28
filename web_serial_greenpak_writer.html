@@ -162,6 +162,8 @@
 			writer.write(bytes);
 			//console.log("Ping End");
 			writer.releaseLock();
+			Sleep(500);	
+			buttonDisable(false);
           }
         });
 		
@@ -328,15 +330,13 @@
 							{
 								msgString.innerText = "Found Device!!";
 								console.log("Found Device!!");									
-								pingMode = false;
-								buttonDisable(false);
+								pingMode = false;								
 							}								
 							else if(value[0] == 0xF8 || value[1] == 0xF8)
 							{
 								msgString.innerText = "No Device Found";
 								console.log("No Device Found");	
-								pingMode = false;
-								buttonDisable(false);
+								pingMode = false;								
 							}
 						}
 						
