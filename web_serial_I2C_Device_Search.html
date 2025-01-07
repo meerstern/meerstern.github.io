@@ -25,12 +25,12 @@
 	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
 	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
 	<footer>
-	<p>Copyright (c) 2022 Crescent All Rights Reserved.</p>
+	<p>Copyright (c) 2025 Crescent All Rights Reserved.</p>
 	</footer>
 	
 	<script>
 	/*	I2C Device Search Tool
-	 *	Copyright (c) 2022
+	 *	Copyright (c) 2025
 	 *  K.Watanabe,Crescent
 	 *  Released under the MIT license
 	 *  http://opensource.org/licenses/mit-license.php
@@ -46,6 +46,7 @@
 	let str = "";
 	let closed;	
 	let loop = 0;
+	let loop2 = 0;
 	let results = "";
 	
 	//Wait Function
@@ -89,7 +90,7 @@
 			document.getElementById("msg_string").innerText = "No Device Found";
 			const writer = port.writable.getWriter();			
 			console.log("Start Search");	
-			dataIndex=0;
+			dataIndex=2;
 			results="";
 			for(loop=2;loop<255;loop=loop+2)
 			{
@@ -119,10 +120,9 @@
 						break;
 					}
 					
-					if (value) 
+					for(loop2=0;loop2<value.length;loop2=loop2+1)
 					{
-						//console.log(dataIndex+" "+value);
-						if(value==0xF0)
+						if(value[loop2]==0xF0)
 						{							
 							//console.log(value);
 							var addr=dataIndex>>1;
@@ -136,11 +136,10 @@
 							document.getElementById("msg_string").innerText = results;
 							dataIndex=dataIndex+2;
 						}
-						else
-						{
+						else if(value[loop2]==0xF1)
+						{								
 							dataIndex=dataIndex+2;
 						}
-						
 					}
 					
 				}
