@@ -35,7 +35,7 @@
 	 *  http://opensource.org/licenses/mit-license.php
 	 */
 	const connectButton = document.getElementById ('connect-button');
-	const initButton = document.getElementById ('init-button');
+	//const initButton = document.getElementById ('init-button');
 	const getButton = document.getElementById ('search-button');
 	
 	let port;
@@ -63,20 +63,20 @@
 		
         connectButton.innerText = '切断';	
 		getButton.disabled = false;
-		initButton.disabled = false;
+		//initButton.disabled = false;
 		
 		//Set Bus Timeout
-		initButton.addEventListener('click', (event) =>
-		{
-          if (port && port.writable)
-		  {		  
-            const bytes = new Uint8Array([0x57, 0x09, 0x67, 0x50]);
-            const writer = port.writable.getWriter();
-            writer.write(bytes);
-            writer.releaseLock();
-			//console.log(bytes);			
-          }
-        });
+		//initButton.addEventListener('click', (event) =>
+		//{
+	        //if (port && port.writable)
+		//{		  
+            	//const bytes = new Uint8Array([0x57, 0x09, 0x67, 0x50]);
+            	//const writer = port.writable.getWriter();
+            	//writer.write(bytes);
+            	//writer.releaseLock();
+		//console.log(bytes);			
+          	//}
+        	//});
 		
 	
 		//Search Button
@@ -85,7 +85,7 @@
           if (port && port.writable)
 		  {
 			getButton.disabled = true;
-			initButton.disabled = true;
+			//initButton.disabled = true;
 			document.getElementById("msg_string").innerText = "No Device Found";
 			const writer = port.writable.getWriter();			
 			console.log("Start Search");	
@@ -100,8 +100,8 @@
 			}
 			console.log("End Search");
 			getButton.disabled = false;	
-			initButton.disabled = false;			
-            writer.releaseLock();
+			//initButton.disabled = false;			
+            		writer.releaseLock();
           }
         });
 				
@@ -165,7 +165,7 @@
 				keepReading = false;				
 				connectButton.innerText = '接続';
 				getButton.disabled = true;
-				initButton.disabled = true;
+				//initButton.disabled = true;
 				reader.cancel();
 				await closed;
 				port = undefined;
