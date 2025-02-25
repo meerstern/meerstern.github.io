@@ -236,41 +236,48 @@
 					{						
 						//console.log(value);
 						//console.log(dataIndex);
-						if(value==0x0D)// Get Line
+						for(var j=0; j<value.length;j++)
 						{
-							var text_decoder = new TextDecoder("utf-8");
-							var strText = text_decoder.decode(Uint8Array.from(dataArry).buffer);
-							const itemData = strText.split(',');
-							
-							for(var i=0; i<itemData.length; i++)
+							if(value[j]==0x0D)// Get Line
 							{
-								if(i<8)
+								var text_decoder = new TextDecoder("utf-8");
+								var strText = text_decoder.decode(Uint8Array.from(dataArry).buffer);
+								const itemData = strText.split(',');
+								
+								for(var i=0; i<itemData.length; i++)
 								{
-									tmpChart.data.datasets[i].data[chartIndex] = parseFloat(itemData[i]);
+									if(i<8)
+									{
+										tmpChart.data.datasets[i].data[chartIndex] = parseFloat(itemData[i]);
+									}
 								}
+								const dt = new Date();
+								const d = new Intl.DateTimeFormat("ja-jp", {
+								  hour: "2-digit",
+								  minute: "2-digit",
+								  second: "2-digit",
+								  fractionalSecondDigits: 3,
+								}).format(dt);
+								tmpChart.data.labels[chartIndex] = d;								
+								tmpChart.update();								
+								chartIndex=chartIndex+1;
+								dataArry=[];
+								dataIndex = 0;
 							}
-							const dt = new Date();
-							const d = new Intl.DateTimeFormat("ja-jp", {
-							  hour: "2-digit",
-							  minute: "2-digit",
-							  second: "2-digit",
-							  fractionalSecondDigits: 3,
-							}).format(dt);
-							tmpChart.data.labels[chartIndex] = d;								
-							tmpChart.update();								
-							chartIndex=chartIndex+1;
-							dataArry=[];
-							dataIndex = 0;
+							else if(value[j]==0x0A)
+							{
+								//Nothing to do 
+							}
+							else
+							{
+								dataArry[dataIndex] = value[j];
+								dataIndex = dataIndex + 1;
+							}
+						
+						
 						}
-						else if(value==0x0A)
-						{
-							//Nothing to do 
-						}
-						else
-						{
-							dataArry[dataIndex] = value;
-							dataIndex = dataIndex + 1;
-						}
+
+
 					}
 				}
 			}			 
