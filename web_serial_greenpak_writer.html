@@ -298,7 +298,7 @@
 				writer.write(bytes);
 				console.log("NVM Write Addr: 0x" + (mindex).toString(16));
 				//console.log(bytes);	
-				Sleep(500);
+				Sleep(300);
 				writer.releaseLock();
 				
 			}
@@ -398,7 +398,7 @@
 							//console.log(value);
 							if( (value[0] == 0x4F || value[1] == 0x4B ) && memIndex<0x10 )
 							{
-								Sleep(300);
+								Sleep(200);
 								memIndex++;
 								executeNvmErase(memIndex);
 							}
