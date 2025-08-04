@@ -67,12 +67,12 @@
 	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
 	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
 	<footer>
-	<p>Copyright (c) 2024 Crescent All Rights Reserved.</p>
+	<p>Copyright (c) 2025 Crescent All Rights Reserved.</p>
 	</footer>
 	
 	<script>
 	/*	I2C Read Write Tool
-	 *	Copyright (c) 2024
+	 *	Copyright (c) 2025
 	 *  K.Watanabe,Crescent
 	 *  Released under the MIT license
 	 *  http://opensource.org/licenses/mit-license.php
@@ -226,7 +226,20 @@
 				Sleep(10);
 				writer.write(bytes3);
 				writer.releaseLock();
-			}				
+			}
+			else if(devAddr.value!="" && wData.value!="")
+			{
+				const bytes1 = new Uint8Array([0x53, intDevAddress, wdataArry.length]);
+				const bytes2 = Uint8Array.from(wdataArry);
+				const bytes3 = new Uint8Array([0x50]);
+				const writer = port.writable.getWriter();		
+				writer.write(bytes1);
+				Sleep(10);
+				writer.write(bytes2);
+				Sleep(10);
+				writer.write(bytes3);
+				writer.releaseLock();			
+			}			
           }
         });
 		
@@ -247,6 +260,19 @@
 				dataIndex=0;
 				writer.write(bytes1);
 				writer.releaseLock();
+			}
+			else if(devAddr.value!="" && rLen.value!="")
+			{
+				setDeviceAddress();
+				setReadReg();
+				setReadLen();
+				
+				const bytes1 = new Uint8Array([0x53, intDevAddress+1, intRLen, 0x50]);
+				const writer = port.writable.getWriter();
+				dataArry=[];
+				dataIndex=0;
+				writer.write(bytes1);
+				writer.releaseLock();			
 			}
           }
         });
