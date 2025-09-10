@@ -1,7 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		
 		<title>Web SPI Flash Tool</title>
 		<style>
 				h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
@@ -32,7 +31,7 @@
 				<option value="16M">16Mbit　(2MByte)</option>
 				<option value="32M">32Mbit　(4MByte)</option>
 				<option value="64M">64Mbit　(8MByte)</option>
-				<option value="128M" selected>128Mbit　(16MByte)</option>
+				<option value="128M" selected="">128Mbit　(16MByte)</option>
 				<option value="256M">256Mbit　(32MByte)</option>
 			</select>
 		</div>
@@ -45,26 +44,26 @@
 				<option value="32">32 Bytes</option>
 				<option value="64">64 Bytes</option>
 				<option value="128">128 Bytes</option>
-				<option value="256" selected>256 Bytes</option>
+				<option value="256" selected="">256 Bytes</option>
 				<option value="512">512 Bytes</option>
 				<option value="1024">1024 Bytes</option>
 			</select>
 		</div>
 		<div>	
 			<p>オフセット(Addr Offset)</p>　　
-			<input type="text" id="offset" name="offset" value="0x0" placeholder="ex) 0x64 or 100"></p>	
+			<input type="text" id="offset" name="offset" value="0x0" placeholder="ex) 0x64 or 100"><p></p>	
 		</div>			
 		<div>	
 			<p>インストラクション(Instructions)</p>　　
 			<select id="Instructions" style="width:180px">
-				<option value="25" selected>25XX(ID:9Fh,ST:05h,R:03h,WE:06h,CE:60h,PW:02h)</option>
+				<option value="25" selected="">25XX(ID:9Fh,ST:05h,R:03h,WE:06h,CE:60h,PW:02h)</option>
 			</select>
 		</div>
 		<div>	
 			<p>アドレス長(Address Length)</p>　　
 			<select id="AddressLen" style="width:180px">
 				<option value="2">2 Bytes</option>
-				<option value="3" selected>3 Bytes</option>
+				<option value="3" selected="">3 Bytes</option>
 				<option value="4">4 Bytes</option>
 			</select>
 		</div>
@@ -74,7 +73,7 @@
 				<option value="1">1MHz</option>
 				<option value="2">2MHz</option>
 				<option value="4">4MHz</option>
-				<option value="8" selected>8MHz</option>
+				<option value="8" selected="">8MHz</option>
 				<option value="10">10MHz</option>
 				<option value="12">12MHz</option>
 			</select>
@@ -84,18 +83,18 @@
 			<input id="rfile" type="file" accept=".bin" onchange="readFile(this)">
 		</div>	
 		<p>Device ID</p>　　
-		<span id="devID" ></span>	
+		<span id="devID"></span>	
 		<p>Progress</p>　　
-		<span id="progress" >0%(0Byte/0Byte)</span>
-		</br>
-	</body>
-	</br>
-	<button id="connect-button" type="button" style="width:180px" disabled>接続(Connect)</button>
-	<button id="device-id-button" type="button" style="width:180px" disabled>DeviceID読込(ID Read)</button>
-	<button id="read-button" type="button" style="width:100px" disabled>読込(Read)</button>
-	<button id="erase-button" type="button" style="width:100px" disabled>消去(Erase)</button>
-	<button id="write-button" type="button" style="width:100px" disabled>書込(Write)</button>
-	<button id="verify-button" type="button" style="width:100px" disabled>検証(Verify)</button>
+		<span id="progress">0%(0Byte/0Byte)</span>
+		<br>
+	
+	<br>
+	<button id="connect-button" type="button" style="width:180px">接続(Connect)</button>
+	<button id="device-id-button" type="button" style="width:180px" disabled="">DeviceID読込(ID Read)</button>
+	<button id="read-button" type="button" style="width:100px" disabled="">読込(Read)</button>
+	<button id="erase-button" type="button" style="width:100px" disabled="">消去(Erase)</button>
+	<button id="write-button" type="button" style="width:100px" disabled="">書込(Write)</button>
+	<button id="verify-button" type="button" style="width:100px" disabled="">検証(Verify)</button>
 	<h3>
 		<span>
 		本ツールは<a href="https://www.switch-science.com/collections/marketplace/products/9394">USB SPI変換基板</a>
@@ -526,7 +525,7 @@
 
 			if( flashSize != fileArry.length && memAddrOffset == 0 )
 			{
-				alert("Has Difference between FileSize and FlashSize!\r\nCheck File or SizeSetting.");
+				alert("Has Difference between FileSize and FlashSize!\r\nCheck File or SizeSetting.\n\However, you can ignore and carry out reading and writing, verification!");
 			}
 		};
 
@@ -1024,6 +1023,7 @@
 				memAddr = memAddrOffset; 
 				byteOffset = 0;
 				loadSettings();
+				flashArrySize = 0;
 				if(fileArrySize==0)
 				{
 					devIdReadButton.disabled = false;
@@ -1434,13 +1434,16 @@
 			for( i=0; i < rlen; i++)
 			{
 				flashArry[flashArrySize] = io[i+2];
-				
-				if(flashArry[flashArrySize]!= fileArry[flashArrySize])
+
+				if( flashArrySize < fileArry.length  && flashArrySize < flashArry.length)
 				{
-					console.log(	"Not matched! Address: " + flashArrySize.toString(16) 
-								  + " Flash: " + flashArry[flashArrySize].toString(16) 
-								  +	" File: " + fileArry[flashArrySize].toString(16) );
-					verifyFailCount++;
+					if(flashArry[flashArrySize]!= fileArry[flashArrySize])
+					{
+						console.log(	"Not matched! Address: " + flashArrySize.toString(16) 
+									  + " Flash: " + flashArry[flashArrySize].toString(16) 
+									  +	" File: " + fileArry[flashArrySize].toString(16) );
+						verifyFailCount++;
+					}				
 				}				
 				flashArrySize++;
 				byteOffset++;
@@ -1733,6 +1736,7 @@
 	}
 	
 	</script>
-  </body>
-</html>
+  
 
+
+</body></html>
