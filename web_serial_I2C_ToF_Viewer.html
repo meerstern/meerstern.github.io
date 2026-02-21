@@ -274,7 +274,7 @@
 				
 			case tmfState.ready:
 				console.log("ready");
-				strMsg.innerText = "ready";
+				strMsg.innerText = "ready. Please Start.";
 				break;
 			
 			case tmfState.start_measure:
@@ -610,6 +610,8 @@
 			console.log(blBytes.toString()+" :"+wfByte.toString()+" Bytes");
 			let percent = Math.round((100*wfByte/(TMF8828_IMAGE_LENGTH)))+2;
 			strMsg.innerText = strMsg.innerText + ": " + percent.toString()+"%";
+			if(percent==100)
+				strMsg.innerText = "remap_firm...Please Wait for 10sec.";
 			writer.write(chkBytes);			
 			writer.releaseLock();
         }
