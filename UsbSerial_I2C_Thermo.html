@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <title>Thermo Array Viewer</title>
+	<style>
+			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
+			h2 { font-size:16pt; }
+			h3 { font-size:8pt; }
+			body { font-size:12pt; color:#444444; }
+			footer{ font-size:6pt; }
+			#heatmapgrid {
+			  display: grid;
+			  grid-template-columns: repeat(8, 40px);
+			  grid-template-rows: repeat(8, 40px);
+			  gap: 2px;
+			}
+
+			.cell {
+			  width: 40px;
+			  height: 40px;
+			  font-size: 10px;
+			  text-align: center;
+			  line-height: 40px;
+			  color: white;
+			}			
+	</style>
+  </head>
+  <body>
+	<h1><span>AMG88XX Thermo Array Viewer</span></h1>
+	<div id="heatmapgrid"></div>
+	</br>
+	<h2><span id="msg-string">USBSerial + SC18IM704+ AMG88XX</span></h2>
+	<button id="connect-button" type="button">Connect</button>
+	<button id="init-button" type="button" disabled="">Initialize</button>
+	<button id="start-button" type="button" disabled="">Start/Stop</button>
+	<h3>
+		<span>
+		Note:
+		</br>		
+		This tool is a tool for testing AMG88XX Thermo Array Sensor using <a href="https://www.elecrow.com/usb-serial-i2c-converter.html">USB Serial I2C Converter Board</a> and a browser.
+		</br>
+		The USB Serial I2C Converter Board V1 equipped with SC18IM700 is not supported due to buffer size limitations.
+		</br>
+		All USB Serial I2C Converter Boards currently on sale are V2.
+		</span>
+	</h3>
+	<h3><span>Works offline and locally</span></h3>
+	<h3><span>Only Edge or Chrome browsers are supported</span></h3>
+	<footer>
+	<p>Copyright (c) 2026 Crescent All Rights Reserved.</p>
+	</footer>
+	
+	<script>
+
+	/*	
+	 *	Thermo Array Viewer with USB Serial I2C
+	 *	Copyright (c) 2026
+	 *  K.Watanabe, Crescent
+	 *  Released under the MIT license
+	 *  http://opensource.org/licenses/mit-license.php
+	 */
+	
+	const connectButton = document.getElementById ('connect-button');
+	const initButton = document.getElementById ('init-button');
+	const startButton = document.getElementById ('start-button');
+	const strMsg = document.getElementById ('msg-string');
+	const heatmapgrid = document.getElementById("heatmapgrid");
+
+	const I2CADDR						= 0x68;	//AMG88XX
+	
+	const AMG88XX_PIX_START				= 0x80;
+	const AMG88XX_PIX_SIZE				= 0x40;//64Pixs
+	const AMG88XX_PIX_DATA_SIZE			= 0x80;//64 x 2bytes
+	const AMG882X_BIT_TO_TMP			= 0.25;			
+	
+	
+	const sensorState =
+	{
+		none:			0,
+		ready:			1,
+		read_results:	2,
+		has_error:		99
+	};
+	
+	let port;
+	let keepReading = true;
+	let reader;	
+	let str = "";
+	let closed;
+	let state = sensorState.ready;
+
+	let dataBuffer = [];
+	let dataBufferIndex = 0;
+	let gridCells = [];
+	
+	
+	async function executeTask()
+	{
+		switch(state)
+		{
+			case sensorState.none:
+				break;
+			
+			case sensorState.ready:
+				console.log("ready");
+				strMsg.innerText = "ready";
+				break;
+			
+			case sensorState.read_results:				
+				console.log("read_results");
+				//strMsg.innerText = "read_results";
+				amg882XReadResults();
+				break;			
+	
+			case sensorState.has_error:
+				console.log("hasErr");
+				strMsg.innerText = "hasErr stopped";
+				break;
+			
+			default:
+				break;
+		
+		}		
+	}
+	
+	async function recieveTask(dataArry)
+	{
+		switch(state)
+		{
+			case sensorState.none:
+				break;
+			
+			case sensorState.ready:
+				break;
+			
+			case sensorState.read_results:
+				if(dataArry)
+				{
+					for(let i=0; i<dataArry.length;i++)
+					{
+						dataBuffer[dataBufferIndex]=dataArry[i];
+						dataBufferIndex++;
+					}
+					
+					if(dataBufferIndex>=AMG88XX_PIX_DATA_SIZE)
+					{
+						let results = amg882XParseResults(dataBuffer);
+						updateGrid(results);
+						strMsg.innerText = "Max :" + Math.max(...results).toString() + "\r\n"+ "Min: " + Math.min(...results).toString();
+						Sleep(100);
+						dataBuffer=[];
+						dataBufferIndex = 0;
+					}
+				}				
+				executeTask();
+				break;			
+		
+			default:
+				break;
+		
+		}
+	}
+	
+	function amg882XReadResults()
+	{
+		if (port && port.writable)
+		{		  
+			const bytes = new Uint8Array([0x53, (I2CADDR<<1), 0x01, AMG88XX_PIX_START, 0x53, (I2CADDR<<1)+1, AMG88XX_PIX_DATA_SIZE, 0x50]);
+			const writer = port.writable.getWriter();
+			writer.write(bytes);			
+			writer.releaseLock();
+		}	
+	
+	}
+	
+
+	function amg882XParseResults(dataArry)
+	{
+		let results=[];	
+	
+		for(let i=0; i<AMG88XX_PIX_SIZE; i++)
+		{
+			results[i] = dataArry[2*i]+(dataArry[2*i+1]<<8);
+			if (results[i]  & 0x800)
+			{
+			  results[i]  |= 0xF000;
+			}
+			results[i] =  Math.round(results[i]*AMG882X_BIT_TO_TMP * 10) / 10;
+		}		
+		return results;
+	}
+	
+	
+	async function getReader()
+	{
+        port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 9600 });
+        connectButton.innerText = 'Disconnect';	
+		initButton.disabled = false;
+		startButton.disabled = false;
+		
+        //Init
+		initButton.addEventListener('click', (event) => 
+		{
+			state = sensorState.ready;
+			executeTask();
+		});
+		
+		//Start/Stop
+		startButton.addEventListener('click', (event) =>
+		{
+			if(state == sensorState.ready)
+			{
+				state = sensorState.read_results;
+				executeTask();
+			}
+			else if(state == sensorState.read_results )
+			{
+				state = sensorState.ready;
+			}
+
+        });
+		
+	
+		while (port.readable && keepReading) 
+		{
+			reader = port.readable.getReader();
+			try {
+				while (true)
+				{
+					const { value, done } = await reader.read();
+					if (done) 
+					{
+						reader.releaseLock();
+						break;
+					}
+					
+					if (value)
+					{	
+						recieveTask(value);						
+					}
+				}
+			}			 
+			catch (error) 
+			{
+			}			
+			finally
+			{
+				reader.releaseLock();
+				await port.close();
+			}
+		}
+      }
+	  
+	if ('serial' in navigator)
+	{
+		connectButton.addEventListener('click', async ()=>
+		{
+			if (port)
+			{
+				keepReading = false;				
+				connectButton.innerText = 'Connect';
+				initButton.disabled = true;
+				startButton.disabled = true;
+				reader.cancel();
+				await closed;
+				port = undefined;
+				
+			}
+			else 
+			{
+				closed = getReader();
+			}
+		});
+
+		connectButton.disabled = false;
+	
+	}
+	else
+	{
+		alert('Not Supported. Use Edge or Chrome!');
+	}
+	
+
+	
+	function Sleep( milli_second )
+	{
+		var start = new Date();
+		while( new Date() - start < milli_second );
+	}
+	
+	/* Heat Map */
+	function valueToColor(value, min=0, max=500)
+	{
+		if (value === 0) return "black";
+
+		const ratio = Math.min(Math.max((value - min) / (max - min), 0), 1);
+		const hue = (1 - ratio) * 240;
+		return `hsl(${hue},100%,50%)`;
+	}
+
+	function initGrid()
+	{
+		for (let i = 0; i < 64; i++) {
+			const cell = document.createElement("div");
+			const val = Math.floor(Math.random()*500);
+			cell.className = "cell";
+			cell.style.backgroundColor = valueToColor(val);
+			cell.textContent = val;
+			heatmapgrid.appendChild(cell);
+			gridCells.push(cell);
+		}
+	}
+	
+	function updateGrid(gridData)
+	{	
+		for (let i = 0; i < 64; i++)
+		{			
+			const value = gridData[i];
+			gridCells[i].style.backgroundColor = valueToColor(value, Math.min(...gridData), Math.max(...gridData));
+			gridCells[i].textContent = value;
+		}
+	}
+	
+	//Load Initial Grid
+	initGrid();
+		
+	</script>
+  
+
+</body></html>
