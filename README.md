@@ -21,7 +21,7 @@
   * [LCD AQM1602][k]
   * [ToF測距センサ グラフ機能付き][l]
   * [GreenPak Writer][z]
-  * [ToFグリッドセンサTMF8828][w]
+  * [ToFグリッドセンサTMF8828/TMF8829][w]
   * [サーモアレイセンサAMG882X][m]
   * [サーモアレイセンサMLX90640][n]
 
@@ -62,7 +62,7 @@
 * [AQM1602 LCD][k]
 * [ToF Ranging Sensor with Graphing Function][l]
 * [GreenPak Writer][z]
-* [TMF8828 ToF Grid Sensor][w]
+* [TMF8828/TMF8829 ToF Grid Sensor][w]
 * [AMG882X Thermo-Array Sensor][m]
 * [Thermo Array Sensor MLX90640][n]
 
