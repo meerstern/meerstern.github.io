@@ -1459,10 +1459,10 @@
 				state = tmfState.start_measure;
 				executeTask();
 			}
-			else if(state == tmfState.in_measure || state == tmfState.read_results || state == tmfState.stop_measure )
+			else if(state == tmfState.in_measure || state == tmfState.read_results )
 			{
-				//state = tmfState.ready;
 				state = tmfState.stop_measure;
+				executeTask();
 			}
         });
 		
