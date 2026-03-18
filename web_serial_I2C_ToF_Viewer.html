@@ -9,19 +9,13 @@
 			body { font-size:12pt; color:#444444; }
 			footer{ font-size:6pt; }
 			#heatmapgrid {
-			  display: grid;
-			  grid-template-columns: repeat(8, 40px);
-			  grid-template-rows: repeat(8, 40px);
-			  gap: 2px;
+				--grid-col-size: 8;
+				--grid-row-size: 8;
+				display: grid;
+				grid-template-columns: repeat(var(--grid-col-size), 40px);
+				grid-template-rows: repeat(var(--grid-row-size), 40px);
+				gap: 2px;
 			}
-			
-			#heatmapgrid2 {
-			  display: grid;
-			  grid-template-columns: repeat(48, 25px);
-			  grid-template-rows: repeat(32, 25px);
-			  gap: 2px;
-			}
-
 			.cell {
 			  width: 40px;
 			  height: 40px;
@@ -30,25 +24,44 @@
 			  line-height: 40px;
 			  color: white;
 			}
-			.cell2 {
-			  width: 25px;
-			  height: 25px;
-			  font-size: 6px;
-			  text-align: center;
-			  line-height: 25px;
-			  color: white;
-			}				
 	</style>
   </head>
   <body>
 	<h1><span>TMF8828/TMF8829 ToF Viewer</span></h1>
 	<h2><div id="heatmapgrid"></div></h2>
-	<h2><div id="heatmapgrid2"></div></h2>
 	</br>
 	<h2><span id="msg-string">USBSerial + SC18IM704+ TMF8828/TMF8829</span></h2>
 	<button id="connect-button" type="button">Connect</button>
 	<button id="init-button" type="button" disabled="">Initialize</button>
 	<button id="start-button" type="button" disabled="">Start/Stop</button>
+	</br>
+	</br>
+	<fieldset><legend>TMF8829 Mode Setting</legend>	    
+		<div>
+			<p>Distance and Operating Modes (Set before Initialize & Initialize again after change)</p>
+				<input type="radio" id="normal_48x32" name="operatingMode" value="normal_48x32" onchange="operatingModeChange();">
+				<label for="normal_48x32">48x32 NORMAL(Max5.7m)</label>　　
+				<input type="radio" id="high_acc_48x32" name="operatingMode" value="high_acc_48x32" onchange="operatingModeChange();">
+				<label for="high_acc_48x32">48x32 HIGH ACCURACY(Max1.4m)</label>
+				</br>
+				<input type="radio" id="normal_32x32" name="operatingMode" value="normal_32x32" onchange="operatingModeChange();">
+				<label for="normal_32x32">32x32 NORMAL(Max5.7m)</label>　　
+				<input type="radio" id="high_acc_32x32" name="operatingMode" value="high_acc_32x32" onchange="operatingModeChange();">
+				<label for="high_acc_32x32">32x32 HIGH ACCURACY(Max1.4m)</label>
+				</br>
+				<input type="radio" id="normal_16x16" name="operatingMode" value="normal_16x16" checked onchange="operatingModeChange();">
+				<label for="normal_16x16">16x16 NORMAL(Max5.7m)</label>　　
+				<input type="radio" id="high_acc_16x16" name="operatingMode" value="high_acc_16x16" onchange="operatingModeChange();">
+				<label for="high_acc_16x16">16x16 HIGH ACCURACY(Max1.4m)</label>
+				</br>
+				<input type="radio" id="normal_8x8" name="operatingMode" value="normal_8x8" onchange="operatingModeChange();">
+				<label for="normal_8x8">8x8&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NORMAL(Max5.7m)</label>　　
+				<input type="radio" id="high_acc_8x8" name="operatingMode" value="high_acc_8x8" onchange="operatingModeChange();">
+				<label for="high_acc_8x8">8x8&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;HIGH ACCURACY(Max1.4m)</label>
+				<input type="radio" id="long_range_8x8" name="operatingMode" value="long_range_8x8" onchange="operatingModeChange();">
+				<label for="long_range_8x8">8x8&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LONG RANGE(Max11m)</label>
+		</div>	
+	</fieldset>
 	<h3>
 		<span>
 		Note:
@@ -105,7 +118,6 @@
 	const startButton = document.getElementById ('start-button');
 	const strMsg = document.getElementById ('msg-string');
 	const heatmapgrid = document.getElementById("heatmapgrid");
-	const heatmapgrid2 = document.getElementById("heatmapgrid2");
 	
 	
 	/* TMF8828/TMF8829 Common */
@@ -185,9 +197,17 @@
 	const TMF8829_FRAME_EOF				= 0xE0F7;
 	const TMF8829_FID_MASK				= 0xF0;
 	const TMF8829_FID_RESULTS			= 0x10;
-	const TMF8829_CMD_LOAD_CFG_16X16 	= 0x43;
-	const TMF8829_CMD_LOAD_CFG_48X32 	= 0x47;//(71)
-	const TMF8829_CMD_LOAD_CFG_8X8   	= 0x40;
+	
+	
+	const TMF8829_CMD_LOAD_CFG_8X8 					= 0x40;//5.7m
+	const TMF8829_CMD_LOAD_CFG_8X8_LONG_RANGE		= 0x41;//11m	
+	const TMF8829_CMD_LOAD_CFG_8X8_HIGH_ACCRCY		= 0x42;//1.4m
+	const TMF8829_CMD_LOAD_CFG_16X16 				= 0x43;//5.7m
+	const TMF8829_CMD_LOAD_CFG_16X16_HIGH_ACCRCY	= 0x44;//1.4m
+	const TMF8829_CMD_LOAD_CFG_32X32				= 0x45;//5.4m
+	const TMF8829_CMD_LOAD_CFG_32X32_HIGH_ACCRCY	= 0x46;//1.4m
+	const TMF8829_CMD_LOAD_CFG_48X32 				= 0x47;//5.7m
+	const TMF8829_CMD_LOAD_CFG_48X32_HIGH_ACCRCY	= 0x48;//1.4m
 	const TMF8829_CFG_PERIOD_MS_REG  	= 0x22;
 	const TMF8829_CMD_WRITE_PAGE_VALUE 	= 0x15;
 	const TMF8829_BL_CMD_SPI_OFF		= 0x20;
@@ -244,8 +264,7 @@
 	let resultRecords2 = Array(2);
 	let dataBuffer = [];
 	let dataBufferIndex = 0;
-	let gridCells = []; 	//For TMF8828
-	let gridCells2 = [];	//For TMF8829
+	let gridCells = [];
 	let isTMF8829Type = false;
 	
 	
@@ -255,6 +274,10 @@
 	let tmf8829SizeToReadKeep = 0;
 	let tmf8829PixSize = 0;
 	let tmf8829FrameNum	 = 0;
+	let tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_16X16;
+	let tmf8829GridX	 = 16;
+	let tmf8829GridY	 = 16;
+	let tmf882X_RangeMax = 5700;
 	
 	
 	async function executeTask()
@@ -309,8 +332,6 @@
 				break;	
 			
 			case tmfState.write_firm:
-				//console.log("write_firm");
-				//strMsg.innerText = "write_firm";
 				if(!isTMF8829Type)
 					tmf8828WriteFirm();
 				else
@@ -403,13 +424,15 @@
 			case tmfState.start_measure:
 				tmf8829SizeToReadKeep = 0;
 				console.log("start_measure");
-				strMsg.innerText = "start_measure";
+				if(tmf8829ModeValue != TMF8829_CMD_LOAD_CFG_16X16)
+					strMsg.innerText = "start_measure";
 				tmfStartMeasure();
 				break;
 				
 			case tmfState.in_measure:
 				console.log("in_measure");
-				strMsg.innerText = "in_measure";
+				if(tmf8829ModeValue != TMF8829_CMD_LOAD_CFG_16X16)
+					strMsg.innerText = "in_measure";
 				Sleep(100);
 				tmf8828CheckInterrupts();
 				break;
@@ -423,8 +446,6 @@
 				break;
 				
 			case tmfState.read_results:
-				//console.log("read_results");
-				//strMsg.innerText = "read_results";
 				if(!isTMF8829Type)
 				{					
 					tmf8828ReadResults();
@@ -468,12 +489,15 @@
 			case tmfState.check_type:
 				if(dataArry[0] == TMF8829_TPYE_VALUE)
 				{
-					isTMF8829Type = true;
-					heatmapgrid.style.display = "none";					
+					isTMF8829Type = true;			
 				}
 				else
 				{
-					heatmapgrid2.style.display = "none";
+					tmf8829GridX = 8;
+					tmf8829GridY = 8;
+					isTMF8829Type = false;
+					tmf882X_RangeMax = 5000;
+					setGrid(tmf8829GridX,tmf8829GridY);
 				}
 				
 				state = tmfState.read_wake;
@@ -666,7 +690,6 @@
 					state = tmfState.read_results;
 					resultNumCount = 0;
 					resultRecords = [];
-					//console.log(dataArry);
 				}				
 				executeTask();	
 				break;
@@ -685,6 +708,7 @@
 				{					
 					if(!isTMF8829Type)	//TMF8828
 					{
+						
 						for(let i=0; i<dataArry.length;i++)
 						{
 							dataBuffer[dataBufferIndex]=dataArry[i];
@@ -696,25 +720,22 @@
 						if(dataBufferIndex>=TMF8828_MEASURE_RESULT_SIZE)
 						{
 							let results = tmf8828ParseResults(dataBuffer);
-							//resultRecords[results.RESULT_NUMBER_INDEX] = {};
 							resultRecords[results.RESULT_NUMBER_INDEX] = results;
 							dataBuffer=[];
 							dataBufferIndex = 0;
 
-
 							//Update Data
 							let gridA = tmf8828Convert8x8(resultRecords);
 							//console.log(gridA);
-							updateGrid(gridA);
-							strMsg.innerText = "Max :" + Math.max(...gridA).toString() + "mm, Min: " + Math.min(...gridA).toString() + "mm";
+							if(Math.min(...gridA)!=Math.max(...gridA))
+							{
+								updateGrid(gridA);
+								strMsg.innerText = "Max :" + Math.max(...gridA).toString() + "mm, Min: " + Math.min(...gridA).toString() + "mm";
+							}
 							resultNumCount++;
 							if(resultNumCount>=TMF8828_MAX_RESULTS_RECORDS)
 							{
-								//console.log(resultRecords);
 								resultNumCount = 0;
-								//resultRecords = [];							
-								//console.log("Results: ");
-								//console.log(resultRecords);
 							}
 							executeTask();	
 						}				
@@ -727,22 +748,14 @@
 							dataBufferIndex++;						
 						}					
 					
-
-									
-						//console.log( "S: " + dataBufferIndex.toString() +", R:" + dataBuffer.toString());
-						//console.log(dataBuffer);
 					
 						if(tmf8829SizeToReadKeep==0 && dataBufferIndex>=(TMF8829_PRE_HEADER_SIZE+TMF8829_FRAME_HEADER_SIZE))//Header Results Response 5+ 16
 						{
 							if((dataBuffer[TMF8829_PRE_HEADER_SIZE]&TMF8829_FID_MASK)!= TMF8829_FID_RESULTS)
 							{
-								
-								//console.log("Clear1: "+ dataBufferIndex.toString());
 								dataBufferIndex=0;
 								break;
 							}
-							
-							//console.log("HEADER: "+ dataBuffer.toString());
 							
 							tmf8829PixSize = tmf8829GetPixelSize(dataBuffer[TMF8829_PRE_HEADER_SIZE+1]);
 							let payload = dataBuffer[7]+ (dataBuffer[8]<<8);
@@ -756,49 +769,50 @@
 							console.log("payload: " + payload.toString());
 							console.log("tmf8829SizeToRead: "+ tmf8829SizeToRead.toString());
 							
-							//console.log("Clear2: " + dataBufferIndex.toString());
-							
 							dataBufferIndex = 0;//clear header data
 							dataBuffer = [];
 						
 							executeTask();
 							
 						}
-						else if(tmf8829SizeToReadKeep!=0 && dataBufferIndex%tmf8829RxSize==0)	//Data Results Response
+						else if(tmf8829SizeToReadKeep!=0 && dataBufferIndex%tmf8829RxSize==0 && dataBufferIndex<tmf8829SizeToReadKeep)	//Data Results Response
 						{
 							tmf8829SizeToRead -= tmf8829RxSize;
-						
-							//console.log("tmf8829SizeToRead: " + tmf8829SizeToRead.toString());
-							//console.log("executeTask");								
 							executeTask();
 						}
 						else if(tmf8829SizeToReadKeep!=0 &&  dataBufferIndex>=tmf8829SizeToReadKeep)
 						{
 
 							let eofMarker = dataBuffer[dataBufferIndex-2] + (dataBuffer[dataBufferIndex-1]<<8);							
-							
-							//console.log("**EOF(0xE0F7, 57591): " +  eofMarker.toString(16));
-							//console.log(dataBuffer);
-							//console.log(dataBufferIndex);
-							//console.log("tmf8829SizeToRead: " + tmf8829SizeToRead.toString());
+
 							if(eofMarker == TMF8829_FRAME_EOF )//Data OK 0xE7F0
 							{
-								//resultRecords2[0] = dataBuffer;
-								let isEven = (tmf8829FrameNum+1)%2;
-								resultRecords2[isEven] = tmf8829ParseResults(dataBuffer);
-								//console.log(results);
-								let girdB = tmf8829Convert48x32(resultRecords2);
-								updateGrid2(girdB);
-								strMsg.innerText = "Max :" + Math.max(...girdB).toString() + "mm, Min: " + Math.min(...girdB).toString() + "mm";
+								if(tmf8829GridY==32)
+								{
+									let isEven = (tmf8829FrameNum+1)%2;
+									resultRecords2[isEven] = tmf8829ParseResults(dataBuffer);
+								}
+								else
+								{
+									resultRecords2[0] = tmf8829ParseResults(dataBuffer);
+								}
+								
+								let girdB = tmf8829Convert(resultRecords2);
+								if(Math.min(...girdB)!=Math.max(...girdB))
+								{									
+									updateGrid(girdB);
+									strMsg.innerText = "Max :" + Math.max(...girdB).toString() + "mm, Min: " + Math.min(...girdB).toString() + "mm";
+								}
 							}
 							tmf8829RxSize = 0;
 							tmf8829SizeToRead = 0;
 							tmf8829PixSize = 0;
 							tmf8829SizeToReadKeep = 0;
 							dataBuffer=[];
-							
-							//console.log("Clear3: "+ dataBufferIndex.toString());
 							dataBufferIndex = 0;
+							
+							if(tmf8829ModeValue == TMF8829_CMD_LOAD_CFG_16X16)//16x16 Normal Has Eratta? Get Stuck. Restart Again.
+								state = tmfState.start_measure;
 							executeTask();
 						}						
 					}
@@ -980,8 +994,6 @@
 				writer.write(bytes1);
 				writer.write(wdata1);					
 				writer.write(bytes3);				
-				//console.log("A");
-				//console.log(wdata1);
 			}
 			else//Send Extra Bytes
 			{
@@ -997,8 +1009,6 @@
 				writer.write(bytes2);
 				writer.write(wdata2);					
 				writer.write(bytes3);	
-				//console.log("B");
-				//console.log(wdata2);				
 			}
 
 			Sleep(100);
@@ -1038,7 +1048,6 @@
 				writer.write(bytes1);
 				writer.write(wdata1);					
 				writer.write(bytes3);				
-				//console.log(wdata1);
 			}
 			else//Send Extra Bytes
 			{
@@ -1053,7 +1062,6 @@
 				writer.write(bytes2);
 				writer.write(wdata2);					
 				writer.write(bytes3);
-				//console.log(wdata2);
 			}
 
 			Sleep(100);
@@ -1249,7 +1257,7 @@
 	{
 		if (port && port.writable)
 		{		  
-			const bytes1 = new Uint8Array([0x53, (I2CADDR<<1), 0x02, TMF882X_COM_CMD_STAT, TMF8829_CMD_LOAD_CFG_48X32, 0x50]);
+			const bytes1 = new Uint8Array([0x53, (I2CADDR<<1), 0x02, TMF882X_COM_CMD_STAT, tmf8829ModeValue, 0x50]);
 			const chkBytes = new Uint8Array([0x53, (I2CADDR<<1), 0x01, TMF882X_COM_CMD_STAT, 0x53, (I2CADDR<<1)+1, 0x01, 0x50]);
 			const writer = port.writable.getWriter();
 			writer.write(bytes1);
@@ -1283,6 +1291,7 @@
 			const writer = port.writable.getWriter();
 			writer.write(bytes1);
 			writer.releaseLock();
+			console.log("tmf8829ReadResultsHeader");
         }
 	}
 	
@@ -1326,9 +1335,6 @@
 		let results={};
 		let pix = [];	
 		
-		//let noize = dataArry[0]+dataArry[1]*256;
-		//let xtalk = dataArry[2]+dataArry[3]*256;
-		
 		for(let i=0; i<(dataArry.length)/3; i++)
 		{
 			let res = {};
@@ -1342,7 +1348,7 @@
 		return results;
 	}
 	
-	function tmf8828Convert8x8(resultArry, maxDistance = 4000, scale = 1)
+	function tmf8828Convert8x8(resultArry, maxDistance = tmf882X_RangeMax, scale = 1)
 	{
 		const grid = new Array(64).fill(maxDistance);
 		const gridIdxArr = [
@@ -1360,7 +1366,6 @@
 			if( raw == undefined)
 				break;
 				
-			//console.log(raw);
 			const gridMap = gridIdxArr[cap];
 
 			for (let j = 0; j < 16; j++)
@@ -1382,44 +1387,69 @@
 	}
 	
 	
-	function tmf8829Convert48x32(resultArry, maxDistance = 5700, scale = 1)
+	function tmf8829Convert(resultArry, maxDistance = tmf882X_RangeMax, scale = 1)
 	{
-		const grid = new Array(1536).fill(maxDistance);
+		const grid = new Array(tmf8829GridX*tmf8829GridY).fill(maxDistance);
 		const raw1 = resultArry[0];
 		const raw2 = resultArry[1];
 			
-		if( raw1 == undefined || raw2 == undefined)
-			return grid;
 			
-			
-			
-		for (let y = 0; y < 16; y++)
+		if(tmf8829GridY==32)
 		{
-			for (let x = 0; x < 48; x++)
+			if( raw1 == undefined || raw2 == undefined)
+				return grid;
+			
+			for (let y = 0; y < tmf8829GridY/2; y++)
 			{
-				let src = y * 48 + x;
-				
-				let distance1 = parseInt(raw1.PIX[src].DISTANCE);
-				let distance2 = parseInt(raw2.PIX[src].DISTANCE);
+				for (let x = 0; x < tmf8829GridX; x++)
+				{
+					let src = y * tmf8829GridX + x;
+					
+					let distance1 = parseInt(raw1.PIX[src].DISTANCE);
+					let distance2 = parseInt(raw2.PIX[src].DISTANCE);
 
-				if (isNaN(distance1) || distance1 === 0 || distance1 >= maxDistance)
-				{
-					distance1 = maxDistance;
+					if (isNaN(distance1) || distance1 === 0 || distance1 >= maxDistance)
+					{
+						distance1 = maxDistance;
+					}
+					
+					if (isNaN(distance2) || distance2 === 0 || distance2 >= maxDistance)
+					{
+						distance2 = maxDistance;
+					}
+					
+					distance1 = Math.floor(distance1 / scale);
+					distance2 = Math.floor(distance2 / scale);
+					
+					grid[(y * 2) * tmf8829GridX + x] = distance1;
+					grid[(y * 2 + 1) * tmf8829GridX + x] = distance2;
 				}
-				
-				if (isNaN(distance2) || distance2 === 0 || distance2 >= maxDistance)
+			}		
+		}	
+		else
+		{
+			if( raw1 == undefined )
+				return grid;
+			
+			for (let y = 0; y < tmf8829GridY; y++)
+			{
+				for (let x = 0; x < tmf8829GridX; x++)
 				{
-					distance2 = maxDistance;
+					let src = y * tmf8829GridX + x;
+					
+					let distance1 = parseInt(raw1.PIX[src].DISTANCE);
+
+					if (isNaN(distance1) || distance1 === 0 || distance1 >= maxDistance)
+					{
+						distance1 = maxDistance;
+					}				
+					
+					distance1 = Math.floor(distance1 / scale);					
+					grid[src] = distance1;
 				}
-				
-				distance1 = Math.floor(distance1 / scale);
-				distance2 = Math.floor(distance2 / scale);
-				
-				grid[(y * 2) * 48 + x] = distance1;
-				grid[(y * 2 + 1) * 48 + x] = distance2;
-			}
-		}
+			}		
 		
+		}
 		return grid;
 	}
 	
@@ -3343,7 +3373,6 @@
 					+ ", useSignal: " + useSignal.toString() 
 					+ ", useNoise: " + useNoise.toString()
 					+ ", useXtalk: " + useXtalk.toString());
-		//PixSize: 3, numPeak: 1, useSignal: 0, useNoise: 0, useXtalk: 0
 		return size;
 	}
 		
@@ -3357,51 +3386,146 @@
 		return `hsl(${hue},100%,50%)`;
 	}
 
-	function initGrid()
+	function initGrid(def = 64)
 	{
-		for (let i = 0; i < 64; i++) {
+		heatmapgrid.innerHTML = "";
+		for (let i = 0; i < def; i++) {
 			const cell = document.createElement("div");
 			const val = Math.floor(Math.random()*500);
 			cell.className = "cell";
 			cell.style.backgroundColor = valueToColor(val);
-			cell.textContent = val;
+			cell.textContent = val;			
 			heatmapgrid.appendChild(cell);
 			gridCells.push(cell);
-		}
-		
-		for (let i = 0; i < 1536; i++) {
-			const cell2 = document.createElement("div");
-			const val = Math.floor(Math.random()*500);
-			cell2.className = "cell2";
-			cell2.style.backgroundColor = valueToColor(val);
-			cell2.textContent = val;
-			heatmapgrid2.appendChild(cell2);
-			gridCells2.push(cell2);
 		}
 	}
 	
 	function updateGrid(gridData)
 	{	
-		for (let i = 0; i < 64; i++)
+		
+		heatmapgrid.innerHTML = "";
+		heatmapgrid.style.setProperty("--grid-col-size", tmf8829GridX);
+		heatmapgrid.style.setProperty("--grid-row-size", tmf8829GridY);		
+		
+		for (let i = 0; i < tmf8829GridX*tmf8829GridY; i++)
 		{			
+			const cell = document.createElement("div");
 			const value = gridData[i];
-			gridCells[i].style.backgroundColor = valueToColor(value, Math.min(...gridData), Math.max(...gridData));
-			gridCells[i].textContent = value;
+			cell.className = "cell";
+			cell.style.backgroundColor = valueToColor(value, Math.min(...gridData), Math.max(...gridData));
+			cell.textContent = value;
+			heatmapgrid.appendChild(cell);
+			gridCells.push(cell);
 		}
+		
 	}
 	
-	function updateGrid2(gridData)
-	{	
-		for (let i = 0; i < 1536; i++)
-		{			
-			const value = gridData[i];
-			gridCells2[i].style.backgroundColor = valueToColor(value, Math.min(...gridData), Math.max(...gridData));
-			gridCells2[i].textContent = value;
-		}
+	function setGrid(x,y)
+	{
+		heatmapgrid.innerHTML = "";
+		heatmapgrid.style.setProperty("--grid-col-size", x);
+		heatmapgrid.style.setProperty("--grid-row-size", y);
+		initGrid(x*y);	
 	}
 	
 	//Load Initial Grid
 	initGrid();
+	setGrid(tmf8829GridX,tmf8829GridY);	
+	
+	function operatingModeChange()
+	{
+		if(normal_48x32.checked == true )
+		{
+			console.log("normal_48x32");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_48X32;
+			tmf8829GridX = 48;
+			tmf8829GridY = 32;
+			tmf8829MeasurementPeriodMs = 6000;
+			tmf882X_RangeMax = 5700;
+			setGrid(tmf8829GridX,tmf8829GridY);			
+		}
+		else if(high_acc_48x32.checked == true )
+		{
+			console.log("high_acc_48x32");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_48X32_HIGH_ACCRCY;
+			tmf8829GridX = 48;
+			tmf8829GridY = 32;
+			tmf8829MeasurementPeriodMs = 6000;
+			tmf882X_RangeMax = 1400;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(normal_32x32.checked == true )
+		{
+			console.log("normal_32x32");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_32X32;
+			tmf8829GridX = 32;
+			tmf8829GridY = 32;
+			tmf8829MeasurementPeriodMs = 4000;
+			tmf882X_RangeMax = 5700;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(high_acc_32x32.checked == true )
+		{
+			console.log("high_acc_32x32");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_32X32_HIGH_ACCRCY;
+			tmf8829GridX = 32;
+			tmf8829GridY = 32;
+			tmf8829MeasurementPeriodMs = 4000;
+			tmf882X_RangeMax = 1400;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(normal_16x16.checked == true )
+		{
+			console.log("normal_16x16");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_16X16;
+			tmf8829GridX = 16;
+			tmf8829GridY = 16;
+			tmf8829MeasurementPeriodMs = 1000;
+			tmf882X_RangeMax = 5700;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(high_acc_16x16.checked == true )
+		{
+			console.log("high_acc_16x16");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_16X16_HIGH_ACCRCY;
+			tmf8829GridX = 16;
+			tmf8829GridY = 16;
+			tmf8829MeasurementPeriodMs = 1000;
+			tmf882X_RangeMax = 1400;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(normal_8x8.checked == true )
+		{
+			console.log("normal_8x8");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_8X8;
+			tmf8829GridX = 8;
+			tmf8829GridY = 8;
+			tmf8829MeasurementPeriodMs = 300;
+			tmf882X_RangeMax = 5700;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(high_acc_8x8.checked == true )
+		{
+			console.log("high_acc_8x8");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_8X8_HIGH_ACCRCY;
+			tmf8829GridX = 8;
+			tmf8829GridY = 8;
+			tmf8829MeasurementPeriodMs = 300;
+			tmf882X_RangeMax = 1400;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+		else if(long_range_8x8.checked == true )
+		{
+			console.log("long_range_8x8");
+			tmf8829ModeValue = TMF8829_CMD_LOAD_CFG_8X8_LONG_RANGE;
+			tmf8829GridX = 8;
+			tmf8829GridY = 8;
+			tmf8829MeasurementPeriodMs = 300;
+			tmf882X_RangeMax = 11000;
+			setGrid(tmf8829GridX,tmf8829GridY);
+		}
+	
+	}
 		
 	</script>
   
