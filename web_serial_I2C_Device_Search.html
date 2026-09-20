@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
     <title>I2C Device Search</title>
 	<style>
 			h1 { font-size:20pt; background-color:#4F4F4F; color:#FFFFFF; font-weight : normal;}
@@ -13,9 +13,9 @@
   </head>
   <body>
 	<h1><span>I2C Device Search Tool </span></h1>
-	<h2><span id="msg_string" >When device is found, search results will show up.</span></h2>
-	<button id="connect-button" type="button" disabled>Connect</button>
-	<button id="search-button" type="button" disabled>Search</button>
+	<h2><span id="msg_string">When device is found, search results will show up.</span></h2>
+	<button id="connect-button" type="button">Connect</button>
+	<button id="search-button" type="button">Search</button>
 	<h3>
 		<span>This tool lets you test I2C devices in your browser using the <a href="https://www.switch-science.com/catalog/6214/">USB Serial I2C Conversion Board</a>.</span>
 	</h3>
@@ -33,7 +33,6 @@
 	 *  http://opensource.org/licenses/mit-license.php
 	 */
 	const connectButton = document.getElementById ('connect-button');
-	//const initButton = document.getElementById ('init-button');
 	const getButton = document.getElementById ('search-button');
 	
 	let port;
@@ -57,22 +56,12 @@
 	{
 		if (port && port.writable)
 		{
-			getButton.disabled = true;
-			document.getElementById("msg_string").innerText = "No Device Found";
-			const writer = port.writable.getWriter();			
-			console.log("Start Search");	
-			dataIndex=2;
-			results="";
-			for(loop=dataIndex;loop<255;loop=loop+2)
-			{
-				const bytes = new Uint8Array([0x53, loop, 0x01, 0x00, 0x53, loop+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
-				await writer.write(bytes);
-				//console.log("Loop: 0x"+ loop.toString(16));
-				await Sleep(50);
-			}
-			console.log("End Search");
-			getButton.disabled = false;	
-			writer.releaseLock();
+			//const bytes = new Uint8Array([0x53, loop, 0x01, 0x00, 0x53, loop+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
+			const bytes = new Uint8Array([0x53, loop+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
+			const writer = port.writable.getWriter();	
+			await writer.write(bytes);
+			await writer.releaseLock();
+			console.log("Loop: 0x"+ loop.toString(16));		
 		}
 	}
 	
@@ -88,6 +77,12 @@
 		//Search Button
 		getButton.addEventListener('click', (event) =>
 		{
+			getButton.disabled = true;
+			document.getElementById("msg_string").innerText = "No Device Found";					
+			console.log("Start Search");				
+			results="";			
+			dataIndex = 2;
+			loop = 2;
 			writeCheckCommand();
         });
 				
@@ -124,6 +119,18 @@
 						else if(value[loop2]==0xF1)
 						{								
 							dataIndex=dataIndex+2;
+						}
+						
+						if(loop<254 && (value[loop2]&0xF0)==0xF0)
+						{
+							loop = loop + 2;
+							await Sleep(50);
+							await writeCheckCommand();
+						}
+						else
+						{
+							console.log("End Search");
+							getButton.disabled = false;	
 						}
 					}
 					
@@ -169,5 +176,6 @@
 
 
 	</script>
-  </body>
-</html>
+  
+
+</body></html>
