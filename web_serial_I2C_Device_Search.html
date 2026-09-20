@@ -12,18 +12,17 @@
 	</style>
   </head>
   <body>
-	<h1><span>I2Cデバイスサーチツール </span></h1>
-	<h2><span id="msg_string" >取得ボタンを押すと検索結果が表示されます</span></h2>
-	<button id="connect-button" type="button" disabled>接続</button>
-	<button id="search-button" type="button" disabled>検索</button>
+	<h1><span>I2C Device Search Tool </span></h1>
+	<h2><span id="msg_string" >When device is found, search results will show up.</span></h2>
+	<button id="connect-button" type="button" disabled>Connect</button>
+	<button id="search-button" type="button" disabled>Search</button>
 	<h3>
-		<span>
-		本ツールは<a href="https://www.switch-science.com/catalog/6214/">USBシリアルI2C変換基板</a>とブラウザでI2Cデバイスのテストをするツールです</span>
+		<span>This tool lets you test I2C devices in your browser using the <a href="https://www.switch-science.com/catalog/6214/">USB Serial I2C Conversion Board</a>.</span>
 	</h3>
-	<h3><span>オフラインやローカル環境でも動作可能です</span></h3>
-	<h3><span>ブラウザはEdgeもしくはChromeのみ対応しています</span></h3>
+	<h3><span>It works offline or in a local environment.</span></h3>
+	<h3><span>The browser must be Edge or Chrome.</span></h3>
 	<footer>
-	<p>Copyright (c) 2025 Crescent All Rights Reserved.</p>
+	<p>Copyright (c) 2026 Crescent All Rights Reserved.</p>
 	</footer>
 	
 	<script>
@@ -48,10 +47,33 @@
 	let results = "";
 	
 	//Wait Function
-	function Sleep( milli_second )
+	async function Sleep( milli_second )
 	{
 		var start = new Date();
 		while( new Date() - start < milli_second );
+	}
+	
+	async function writeCheckCommand()
+	{
+		if (port && port.writable)
+		{
+			getButton.disabled = true;
+			document.getElementById("msg_string").innerText = "No Device Found";
+			const writer = port.writable.getWriter();			
+			console.log("Start Search");	
+			dataIndex=2;
+			results="";
+			for(loop=dataIndex;loop<255;loop=loop+2)
+			{
+				const bytes = new Uint8Array([0x53, loop, 0x01, 0x00, 0x53, loop+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
+				await writer.write(bytes);
+				//console.log("Loop: 0x"+ loop.toString(16));
+				await Sleep(50);
+			}
+			console.log("End Search");
+			getButton.disabled = false;	
+			writer.releaseLock();
+		}
 	}
 	
 	//Com Open & Recieve Data
@@ -60,48 +82,13 @@
         port = await navigator.serial.requestPort({});
         await port.open({ baudRate: 9600 });
 		
-        connectButton.innerText = '切断';	
+        connectButton.innerText = 'Disconnect';	
 		getButton.disabled = false;
-		//initButton.disabled = false;
-		
-		//Set Bus Timeout
-		//initButton.addEventListener('click', (event) =>
-		//{
-	        //if (port && port.writable)
-		//{		  
-            	//const bytes = new Uint8Array([0x57, 0x09, 0x67, 0x50]);
-            	//const writer = port.writable.getWriter();
-            	//writer.write(bytes);
-            	//writer.releaseLock();
-		//console.log(bytes);			
-          	//}
-        	//});
-		
 	
 		//Search Button
 		getButton.addEventListener('click', (event) =>
 		{
-          if (port && port.writable)
-		  {
-			getButton.disabled = true;
-			//initButton.disabled = true;
-			document.getElementById("msg_string").innerText = "No Device Found";
-			const writer = port.writable.getWriter();			
-			console.log("Start Search");	
-			dataIndex=2;
-			results="";
-			for(loop=2;loop<255;loop=loop+2)
-			{
-				const bytes = new Uint8Array([0x53, loop, 0x01, 0x00, 0x53, loop+1, 0x01, 0x50, 0x52, 0x0A, 0x50]);
-				writer.write(bytes);
-				//console.log("Loop: "+ loop + " DATA:"+ bytes);
-				Sleep(30);
-			}
-			console.log("End Search");
-			getButton.disabled = false;	
-			//initButton.disabled = false;			
-            		writer.releaseLock();
-          }
+			writeCheckCommand();
         });
 				
 
@@ -162,9 +149,8 @@
 			if (port)
 			{
 				keepReading = false;				
-				connectButton.innerText = '接続';
+				connectButton.innerText = 'Connect';
 				getButton.disabled = true;
-				//initButton.disabled = true;
 				reader.cancel();
 				await closed;
 				port = undefined;
@@ -178,7 +164,7 @@
 	}
 	else
 	{
-		alert('お使いのブラウザは対応していません Edgeもしくはchromeを使用してください');
+		alert('Browser Not Supported. Use Edge/chrome.');
 	}
 
 
